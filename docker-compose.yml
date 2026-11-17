@@ -21,7 +21,7 @@ services:
       - path: .env
         required: false
     ports:
-      - 3000:3000
+      - "3000"
 volumes:
   db_data_sqlite:
   custom:
