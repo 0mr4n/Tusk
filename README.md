@@ -32,6 +32,19 @@ JWT_SECRET=$(openssl rand -hex 32) DEFAULT_DOMAIN=localhost:3000 docker compose 
 open http://localhost:3000          # first visit → create the admin account
 ```
 
+### Prebuilt image
+
+Every release is published to GitHub Container Registry for `linux/amd64` and `linux/arm64`:
+
+```sh
+docker pull ghcr.io/0mr4n/tusk:latest     # or a pinned version, e.g. :0.3.1 / :0.3
+docker run -d -p 3000:3000 -v tusk-data:/var/lib/kutt \
+  -e JWT_SECRET=$(openssl rand -hex 32) -e DEFAULT_DOMAIN=localhost:3000 \
+  ghcr.io/0mr4n/tusk:latest
+```
+
+Releases are cut by pushing a `vX.Y.Z` tag (see `.github/workflows/release.yml`).
+
 With Postgres or MariaDB:
 
 ```sh
