@@ -434,7 +434,7 @@ type routeAcc struct {
 	dev    [4]int64
 }
 
-// RouteStats uses the same periods and view-index arithmetic as Kutt's stats
+// RouteStats uses the same periods and view-index arithmetic as upstream's stats
 // (visit.queries.js find), keyed on the bucket hour.
 func (rs *routingStore) RouteStats(ctx context.Context, linkID int64, now time.Time) (*store.RouteStats, error) {
 	now = now.UTC()

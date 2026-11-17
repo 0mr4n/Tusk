@@ -1,7 +1,7 @@
-// Package sqlstore implements store.Store over database/sql for the three Kutt dialects:
+// Package sqlstore implements store.Store over database/sql for the three supported dialects:
 // postgres (pgx stdlib), mysql/mariadb (go-sql-driver) and sqlite (modernc, pure Go).
 //
-// Every query mirrors Kutt v3.2.6 server/queries/*.js; comments cite the source line.
+// Every query mirrors upstream v3.2.6 server/queries/*.js; comments cite the source line.
 // Queries are written once with '?' placeholders and rebound for postgres.
 package sqlstore
 
@@ -60,7 +60,7 @@ type DB struct {
 
 var _ store.Store = (*DB)(nil)
 
-// Open connects using the Kutt DB_* settings and applies DB_POOL_MIN/MAX.
+// Open connects using the DB_* settings and applies DB_POOL_MIN/MAX.
 func Open(ctx context.Context, cfg *config.Config) (*DB, error) {
 	var (
 		d          dialect
@@ -158,8 +158,8 @@ func postgresDSN(cfg *config.Config) string {
 	}
 	q := url.Values{}
 	if cfg.DBSSL {
-		// Kutt passes ssl:true to node-postgres; "require" encrypts without CA pinning,
-		// which is what most managed-Postgres Kutt installs rely on.
+		// Upstream passes ssl:true to node-postgres; "require" encrypts without CA pinning,
+		// which is what most managed-Postgres installs rely on.
 		q.Set("sslmode", "require")
 	} else {
 		q.Set("sslmode", "disable")

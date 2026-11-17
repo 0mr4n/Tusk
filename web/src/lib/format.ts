@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
 
-/** Debounce a value (Kutt's link search used a 500ms delay). */
+/** Debounce a value (upstream's link search used a 500ms delay). */
 export function useDebounced<T>(value: T, ms = 500): T {
   const [v, setV] = useState(value)
   useEffect(() => {
@@ -22,7 +22,7 @@ export async function copyText(text: string, label = "Copied to clipboard") {
 
 const rtf = typeof Intl !== "undefined" ? new Intl.RelativeTimeFormat("en", { numeric: "auto" }) : null
 
-/** "3 hours ago" / "in 5 days", like Kutt's getTimeAgo / ms(long). */
+/** "3 hours ago" / "in 5 days", like upstream's getTimeAgo / ms(long). */
 export function relativeTime(iso: string | null | undefined): string {
   if (!iso) return ""
   const d = parseDate(iso)
@@ -47,7 +47,7 @@ export function relativeTime(iso: string | null | undefined): string {
   return ""
 }
 
-/** Kutt stores UTC datetimes; SQLite rows may come without a zone suffix. */
+/** Upstream stores UTC datetimes; SQLite rows may come without a zone suffix. */
 export function parseDate(s: string): Date | null {
   let v = s
   if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/.test(v)) v = v.replace(" ", "T")
@@ -72,11 +72,11 @@ export function stripProtocol(url: string): string {
   return url.replace(/^https?:\/\//, "")
 }
 
-/** Kutt obfuscates the report/contact email as user[at]domain.com. */
+/** Upstream obfuscates the report/contact email as user[at]domain.com. */
 export function obfuscateEmail(email: string): string {
   return email.replace("@", "[at]")
 }
-/** Same format as the `ms` package's long output (what Kutt pre-fills): "5 days", "3 hours". */
+/** Same format as the `ms` package's long output (what upstream pre-fills): "5 days", "3 hours". */
 export function msLong(iso: string | null | undefined): string {
   if (!iso) return ""
   const d = parseDate(iso)

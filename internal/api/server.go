@@ -1,4 +1,4 @@
-// Package api implements Kutt's JSON API (server/routes/*.routes.js) under
+// Package api implements upstream's JSON API (server/routes/*.routes.js) under
 // both /api/v2 and /api (server.js:78-79), plus the small set of Tusk
 // extensions the React SPA needs (docs/API-EXTENSIONS.md).
 package api
@@ -29,7 +29,7 @@ import (
 )
 
 // Mailer is implemented by internal/mail. Every method is a no-op error when
-// mail is disabled; callers check Enabled first like Kutt's featureAccess.
+// mail is disabled; callers check Enabled first like upstream's featureAccess.
 type Mailer interface {
 	Enabled() bool
 	SendVerification(ctx context.Context, to, token string) error
@@ -39,7 +39,7 @@ type Mailer interface {
 }
 
 // DomainInvalidator is implemented by *cache.DomainResolver so domain edits
-// reach every redirector (docs/CONTRACTS.md, Agent A note).
+// reach every redirector.
 type DomainInvalidator interface {
 	Invalidate(ctx context.Context, address string) error
 }
@@ -53,7 +53,7 @@ type Options struct {
 	Auth     *auth.Service
 	OIDC     *auth.OIDC // nil when OIDC is disabled
 	Mailer   Mailer
-	Redis    *redis.Client // optional: rate limits + stats cache shared with Kutt
+	Redis    *redis.Client // optional: rate limits + stats cache shared with the Node.js original
 	IPs      httpx.IPResolver
 	Metrics  *httpx.Metrics
 	Log      *slog.Logger
@@ -123,7 +123,7 @@ func (s *Server) Register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/", func(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, "Not found.")
 	})
-	// Non-/api Kutt routes that are not SPA pages.
+	// Non-/api upstream routes that are not SPA pages.
 	mux.HandleFunc("GET /login/oidc", s.h(s.oidcLogin))
 	mux.HandleFunc("GET /logout", func(w http.ResponseWriter, r *http.Request) {
 		s.o.Auth.ClearTokenCookie(w)
@@ -223,11 +223,11 @@ func Health(w http.ResponseWriter, _ *http.Request) {
 
 type handlerFunc func(w http.ResponseWriter, r *http.Request) error
 
-// errBody is Kutt's CustomError; status defaults to 500 like utils.js:21.
+// errBody is upstream's CustomError; status defaults to 500 like utils.js:21.
 func errBody(status int, msg string) error { return domain.NewError(status, msg) }
 
-// kuttErr: `new CustomError(msg)` without a status -> 500.
-func kuttErr(msg string) error { return domain.NewError(http.StatusInternalServerError, msg) }
+// serverErr: `new CustomError(msg)` without a status -> 500.
+func serverErr(msg string) error { return domain.NewError(http.StatusInternalServerError, msg) }
 
 func (s *Server) h(fn handlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -400,7 +400,7 @@ func parseQuery(w http.ResponseWriter, r *http.Request) (pageQuery, bool) {
 		limit = 50
 	}
 	if limit < 0 {
-		limit = 10 // Kutt would pass a negative LIMIT to the DB (500)
+		limit = 10 // Upstream would pass a negative LIMIT to the DB (500)
 	}
 	skip := 0
 	if n, ok := parseIntJS(q.Get("skip")); ok && n > 0 {

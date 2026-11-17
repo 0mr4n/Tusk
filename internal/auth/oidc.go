@@ -30,11 +30,11 @@ type OIDCConfig struct {
 	Prompt       string // OIDC_PROMPT, optional
 	EmailClaim   string // OIDC_EMAIL_CLAIM
 	RedirectURL  string // utils.getSiteURL() + "/login/oidc" (passport.js:93)
-	CookieSecret string // JWT_SECRET (Kutt: cookie-session keys: [JWT_SECRET], server.js:47)
+	CookieSecret string // JWT_SECRET (upstream: cookie-session keys: [JWT_SECRET], server.js:47)
 	Secure       bool
 }
 
-// MsgOIDCFailed is Kutt's OIDC error (auth.handler.js:25).
+// MsgOIDCFailed is upstream's OIDC error (auth.handler.js:25).
 const MsgOIDCFailed = "OIDC authentication failed."
 
 const oidcCookie = "tusk_oidc"
@@ -55,7 +55,7 @@ type OIDC struct {
 }
 
 // NewOIDC returns a lazily-discovering OIDC handler (discovery on first use
-// so the API starts even if the IdP is briefly down, like Kutt's async enableOIDC).
+// so the API starts even if the IdP is briefly down, like upstream's async enableOIDC).
 func NewOIDC(cfg OIDCConfig, users store.UserStore) (*OIDC, error) {
 	for k, v := range map[string]string{"OIDC_ISSUER": cfg.Issuer, "OIDC_CLIENT_ID": cfg.ClientID,
 		"OIDC_CLIENT_SECRET": cfg.ClientSecret, "OIDC_SCOPE": cfg.Scope, "OIDC_EMAIL_CLAIM": cfg.EmailClaim} {
@@ -210,7 +210,7 @@ func (o *OIDC) findOrCreate(ctx context.Context, email string) (*domain.User, er
 		return nil, err
 	}
 	// passport.js:117-128: random password (never usable), verified=true,
-	// no verification token. NOTE: Kutt stores the random password UNHASHED
+	// no verification token. NOTE: upstream stores the random password UNHASHED
 	// (query.user.add receives the raw string); we hash it, which is strictly
 	// safer and indistinguishable to users (nobody knows either value).
 	hash, err := HashPassword(GenerateRandomPassword())

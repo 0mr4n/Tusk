@@ -3,7 +3,7 @@ package api
 import "net/http"
 
 // chain is a tiny port of an express-validator 6 ValidationChain for one
-// body/param/query field. Semantics that matter for Kutt parity:
+// body/param/query field. Semantics that matter for upstream parity:
 //   - optional() is re-evaluated before EVERY step with the current value
 //     (context-runner-impl.js getData({requiredOnly:true})), so a trim() that
 //     empties an optional({checkFalsy}) field skips the remaining steps;
@@ -99,7 +99,7 @@ func (c *chain) trim() *chain {
 	return c.sanitize(func(v any) any { return jsTrim(jsString(v)) })
 }
 
-// customStr is a custom sanitizer/validator over a JS value that the Kutt
+// customStr is a custom sanitizer/validator over a JS value that the upstream
 // code treats as a string (after trim it always is).
 func (c *chain) mapStr(fn func(string) string) *chain {
 	return c.sanitize(func(v any) any {

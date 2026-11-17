@@ -1,4 +1,4 @@
-// Package auth implements Kutt-compatible authentication: bcrypt (bcryptjs
+// Package auth implements compatible authentication: bcrypt (bcryptjs
 // hashes verify, new hashes cost 12), HS256 JWTs in the "token" cookie
 // (utils.js signToken/setToken, passport.js jwtFromRequest), X-API-KEY
 // (passport-localapikey-update), OIDC and the request middleware.
@@ -14,7 +14,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-// BcryptCost matches bcrypt.genSalt(12) in Kutt (auth.handler.js:98, link.queries.js:204).
+// BcryptCost matches bcrypt.genSalt(12) in upstream (auth.handler.js:98, link.queries.js:204).
 const BcryptCost = 12
 
 // bcryptjs silently truncates the UTF-8 input to 72 bytes; x/crypto refuses
@@ -43,7 +43,7 @@ func ComparePassword(hash, pw string) bool {
 
 // ---------- environment mode (envalid semantics) ----------
 
-// Mode mirrors envalid's env.isDev / env.isProd which Kutt uses for cookie
+// Mode mirrors envalid's env.isDev / env.isProd which upstream uses for cookie
 // "secure" (utils.js:54) and the short-URL / site-URL scheme (utils.js:84,89).
 // envalid: isProd = NODE_ENV is unset or "production"; isDev = NODE_ENV == "development".
 // (Verified: cleanEnv({}) -> isProd true, isDev false.)
@@ -80,26 +80,26 @@ const Issuer = "ApiAuth"
 // TokenTTL is the JWT and cookie lifetime (utils.js:44, 52).
 const TokenTTL = 7 * 24 * time.Hour
 
-// kuttClaims serialises in jsonwebtoken's key order: iss, sub, iat, exp.
-type kuttClaims struct {
+// jwtClaims serialises in jsonwebtoken's key order: iss, sub, iat, exp.
+type jwtClaims struct {
 	Iss string `json:"iss"`
 	Sub int64  `json:"sub"`
 	Iat int64  `json:"iat"`
 	Exp int64  `json:"exp"`
 }
 
-func (c kuttClaims) GetExpirationTime() (*jwt.NumericDate, error) {
+func (c jwtClaims) GetExpirationTime() (*jwt.NumericDate, error) {
 	return jwt.NewNumericDate(time.Unix(c.Exp, 0)), nil
 }
-func (c kuttClaims) GetIssuedAt() (*jwt.NumericDate, error) {
+func (c jwtClaims) GetIssuedAt() (*jwt.NumericDate, error) {
 	return jwt.NewNumericDate(time.Unix(c.Iat, 0)), nil
 }
-func (c kuttClaims) GetNotBefore() (*jwt.NumericDate, error) { return nil, nil }
-func (c kuttClaims) GetIssuer() (string, error)              { return c.Iss, nil }
-func (c kuttClaims) GetSubject() (string, error)             { return strconv.FormatInt(c.Sub, 10), nil }
-func (c kuttClaims) GetAudience() (jwt.ClaimStrings, error)  { return nil, nil }
+func (c jwtClaims) GetNotBefore() (*jwt.NumericDate, error) { return nil, nil }
+func (c jwtClaims) GetIssuer() (string, error)              { return c.Iss, nil }
+func (c jwtClaims) GetSubject() (string, error)             { return strconv.FormatInt(c.Sub, 10), nil }
+func (c jwtClaims) GetAudience() (jwt.ClaimStrings, error)  { return nil, nil }
 
-// Tokens signs and verifies Kutt JWTs.
+// Tokens signs and verifies upstream JWTs.
 type Tokens struct {
 	secret []byte
 	now    func() time.Time
@@ -119,7 +119,7 @@ func (t *Tokens) SetClock(now func() time.Time) { t.now = now }
 // Sign returns a token with {iss:"ApiAuth", sub:id, iat, exp:+7d} (utils.js signToken).
 func (t *Tokens) Sign(userID int64) (string, error) {
 	now := t.now()
-	c := kuttClaims{Iss: Issuer, Sub: userID, Iat: now.Unix(), Exp: now.Add(TokenTTL).Unix()}
+	c := jwtClaims{Iss: Issuer, Sub: userID, Iat: now.Unix(), Exp: now.Add(TokenTTL).Unix()}
 	return jwt.NewWithClaims(jwt.SigningMethodHS256, c).SignedString(t.secret)
 }
 

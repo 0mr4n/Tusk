@@ -70,7 +70,7 @@ func TestRoutingValidation(t *testing.T) {
 		{map[string]any{"mode": "redirect", "rules": map[string]any{"windows": map[string]any{"url": "https://x.com"}}}, 400, `Unknown routing platform "windows". Use ios, android or desktop.`},
 		{map[string]any{"mode": "redirect", "rules": map[string]any{"ios": "https://x.com"}}, 400, msgRuleObject},
 		{map[string]any{"mode": "redirect", "rules": map[string]any{"ios": map[string]any{}}}, 400, msgRuleURL},
-		{map[string]any{"mode": "redirect", "rules": map[string]any{"ios": map[string]any{"url": "https://kutt.test/x"}}}, 400, msgRuleURL},
+		{map[string]any{"mode": "redirect", "rules": map[string]any{"ios": map[string]any{"url": "https://tusk.test/x"}}}, 400, msgRuleURL},
 		{map[string]any{"mode": "redirect", "rules": map[string]any{"ios": map[string]any{"url": "javascript:alert(1)"}}}, 400, msgRuleURL},
 		{map[string]any{"mode": "redirect", "rules": map[string]any{"ios": map[string]any{"url": "tel:+123"}}}, 400, msgRuleURL},
 		{map[string]any{"mode": "redirect", "rules": map[string]any{"ios": map[string]any{"url": "//x.com"}}}, 400, msgRuleURL},
@@ -147,7 +147,7 @@ func TestRoutingSubresource(t *testing.T) {
 func TestEditLinkRoutingInline(t *testing.T) {
 	e := newEnv(t)
 	id := e.do("POST", "/api/v2/links", "user", map[string]any{"target": "https://example.com"}).json(t)["id"].(string)
-	// Routing-only edit is a valid change (Kutt would say "Should at least update one field.").
+	// Routing-only edit is a valid change (upstream would say "Should at least update one field.").
 	r := e.do("PATCH", "/api/v2/links/"+id, "user", map[string]any{"routing": sampleRoutingBody()})
 	if r.code != 200 || !strings.Contains(r.body, `"routing":{"enabled":true`) {
 		t.Fatalf("routing-only edit: %d %s", r.code, r.body)
@@ -177,7 +177,7 @@ func TestRoutingInstanceSwitch(t *testing.T) {
 	if r.code != 400 || r.json(t)["error"] != msgRoutingDisabled {
 		t.Fatalf("%d %s", r.code, r.body)
 	}
-	// Kutt clients that never send routing are unaffected.
+	// Legacy clients that never send routing are unaffected.
 	if r := e.do("POST", "/api/v2/links", "user", map[string]any{"target": "https://example.com"}); r.code != 201 {
 		t.Fatalf("plain create: %d", r.code)
 	}
@@ -300,7 +300,7 @@ func TestDomainApps(t *testing.T) {
 	if r := e.do("PUT", "/api/v2/domains/default/apps", "user", good); r.code != 401 {
 		t.Fatalf("default by user: %d", r.code)
 	}
-	if r := e.do("PUT", "/api/v2/domains/default/apps", "admin", good); r.code != 200 || !strings.Contains(r.body, `"domain":"kutt.test"`) {
+	if r := e.do("PUT", "/api/v2/domains/default/apps", "admin", good); r.code != 200 || !strings.Contains(r.body, `"domain":"tusk.test"`) {
 		t.Fatalf("default by admin: %d %s", r.code, r.body)
 	}
 	if r := e.do("DELETE", base, "user", nil); r.code != 200 {

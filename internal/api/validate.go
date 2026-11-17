@@ -11,7 +11,7 @@ import (
 	"github.com/dlclark/regexp2"
 )
 
-// This file ports the primitives behind Kutt's validators.handler.js:
+// This file ports the primitives behind upstream's validators.handler.js:
 // express-validator 6.14 value coercion, validator 13 isEmail/isNumeric/
 // isBoolean/isLength, utils.urlRegex (needs lookahead -> regexp2), the `ms`
 // 2.1.3 parser, Node's legacy url.parse host extraction and parseInt.
@@ -375,7 +375,7 @@ var hostlessProtocols = map[string]bool{"javascript:": true}
 var protoRe = regexp.MustCompile(`(?i)^[a-z0-9.+-]+:`)
 var userAtHostRe = regexp.MustCompile(`^//[^@/]+@[^@/]+`)
 
-// legacyURL holds the parts of url.parse(...) Kutt reads.
+// legacyURL holds the parts of url.parse(...) upstream reads.
 type legacyURL struct {
 	Host     string // hostname[:port], lower-cased
 	Hostname string

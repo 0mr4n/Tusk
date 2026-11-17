@@ -17,7 +17,7 @@ import (
 
 type visitStore struct{ s *DB }
 
-// Kutt column buckets (models/visit.model.js).
+// Upstream column buckets (models/visit.model.js).
 var (
 	browserKeys = []string{"chrome", "edge", "firefox", "ie", "opera", "other", "safari"}
 	osKeys      = []string{"android", "ios", "linux", "macos", "other", "windows"}
@@ -39,7 +39,7 @@ func bucketKey(k string, allowed []string) string {
 //     so two replicas can never both miss the hour row and insert duplicates.
 //     If the link no longer exists the delta is dropped.
 //  2. SELECT the visits row for (link_id, hour) FOR UPDATE (pg/mysql; sqlite uses an
-//     IMMEDIATE transaction) — the same lock Kutt takes, so Node Kutt can run alongside.
+//     IMMEDIATE transaction) — the same lock upstream takes, so the Node.js original can run alongside.
 //  3. UPDATE it (increment total/br_*/os_*, merge countries/referrers JSON, updated_at)
 //     or INSERT a new bucket.
 //
@@ -76,7 +76,7 @@ func (s *DB) hourMatch(h time.Time) (string, []any) {
 	h = h.UTC().Truncate(time.Hour)
 	switch s.d {
 	case dSQLite:
-		// strftime('%Y-%m-%d %H:00:00', created_at) = 'YYYY-MM-DD HH:00:00' exactly like Kutt;
+		// strftime('%Y-%m-%d %H:00:00', created_at) = 'YYYY-MM-DD HH:00:00' exactly like upstream;
 		// robust to any created_at text format sqlite understands.
 		return "strftime('%Y-%m-%d %H:00:00', created_at) = ?", []any{h.Format("2006-01-02 15:04:05")}
 	default:
@@ -176,7 +176,7 @@ func sumByColumn(prefix string, m map[string]int64, allowed []string) []colCount
 
 func (vs *visitStore) insertBucket(ctx context.Context, tx *sql.Tx, d *store.VisitDelta, hour, now time.Time) error {
 	s := vs.s
-	// Kutt inserts with created_at = DB now() at processing time. Use now when it falls in
+	// Upstream inserts with created_at = DB now() at processing time. Use now when it falls in
 	// the bucket's hour (normal case, worker flushes within seconds); for late/replayed
 	// events use the hour start so the row is found again by the hour predicate.
 	created := now

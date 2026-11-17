@@ -64,13 +64,13 @@
    "host": null,
    "hostname": null
   },
-  "http://kutt.test": {
-   "host": "kutt.test",
-   "hostname": "kutt.test"
+  "http://tusk.test": {
+   "host": "tusk.test",
+   "hostname": "tusk.test"
   },
-  "https://WWW.KUTT.TEST/abc": {
-   "host": "www.kutt.test",
-   "hostname": "www.kutt.test"
+  "https://WWW.TUSK.TEST/abc": {
+   "host": "www.tusk.test",
+   "hostname": "www.tusk.test"
   },
   "tg://resolve?x": {
    "host": "resolve",

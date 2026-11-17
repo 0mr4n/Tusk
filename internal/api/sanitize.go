@@ -9,7 +9,7 @@ import (
 
 // Renderers for utils.sanitize.* (utils.js:268-346). Key order follows the
 // spread of the knex row (link.queries.js `selectable`, `select *` for
-// domains) so the JSON is byte-identical to Kutt on Postgres.
+// domains) so the JSON is byte-identical to upstream on Postgres.
 
 func (s *Server) linkURL(l *domain.Link) string {
 	return s.shortURL(l.Address, l.DomainAddress)

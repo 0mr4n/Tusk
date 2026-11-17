@@ -1,7 +1,7 @@
-// Package geo resolves a visitor's country (GEO-001..005, docs/srs/00-overview.md item 4)
+// Package geo resolves a visitor's country (GEO-001..005)
 // and extracts the trusted client IP.
 //
-// Kutt: country = (req.get("cf-ipcountry") || geoip.lookup(ip)?.country)?.slice(0,2).toUpperCase()
+// Upstream: country = (req.get("cf-ipcountry") || geoip.lookup(ip)?.country)?.slice(0,2).toUpperCase()
 // || "Unknown" (links.handler.js:537, queues/visit.js:20). Tusk makes the source configurable.
 //
 // Wiring (redirect handler):
@@ -54,7 +54,7 @@ func New(cfg *config.Config) (domain.GeoResolver, error) {
 	return nil, fmt.Errorf("geo: unknown GEO_PROVIDER %q", cfg.GeoProvider)
 }
 
-// normalize applies Kutt's `.slice(0, 2).toUpperCase()` and GEO-002's unknown values.
+// normalize applies upstream's `.slice(0, 2).toUpperCase()` and GEO-002's unknown values.
 func normalize(v string) string {
 	v = strings.TrimSpace(v)
 	if len(v) > 2 {

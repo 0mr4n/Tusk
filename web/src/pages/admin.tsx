@@ -665,7 +665,7 @@ export default function AdminPage() {
         </TabsList>
         <Card className="mt-2">
           <CardContent>
-            {/* key= remounts the tab when navigated to with a filter (Kutt's user-email click). */}
+            {/* key= remounts the tab when navigated to with a filter (upstream's user-email click). */}
             <TabsContent value="links">
               <AdminLinks key={`l-${userFilter}`} initialUser={userFilter} onUserClick={(email) => go("users", { search: email })} />
             </TabsContent>

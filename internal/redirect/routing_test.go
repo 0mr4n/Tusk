@@ -70,7 +70,7 @@ func TestRoutedRedirect(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			pub.evs = nil
-			rr := do(t, mux, "GET", "kutt.test", c.path, map[string]string{"User-Agent": c.ua}, "")
+			rr := do(t, mux, "GET", "tusk.test", c.path, map[string]string{"User-Agent": c.ua}, "")
 			if rr.Code != http.StatusFound || rr.Header().Get("Location") != c.loc {
 				t.Fatalf("got %d %q, want 302 %q", rr.Code, rr.Header().Get("Location"), c.loc)
 			}
@@ -82,7 +82,7 @@ func TestRoutedRedirect(t *testing.T) {
 				t.Fatalf("event %+v", ev)
 			}
 			if ev.Browser == "" || ev.OS == "" {
-				t.Fatalf("Kutt fields missing: %+v", ev)
+				t.Fatalf("legacy fields missing: %+v", ev)
 			}
 		})
 	}
@@ -90,18 +90,18 @@ func TestRoutedRedirect(t *testing.T) {
 
 func TestRoutedBotsAndSwitch(t *testing.T) {
 	h, pub, mux := setupRouting(t)
-	rr := do(t, mux, "GET", "kutt.test", "/rd", map[string]string{"User-Agent": "Twitterbot/1.0"}, "")
+	rr := do(t, mux, "GET", "tusk.test", "/rd", map[string]string{"User-Agent": "Twitterbot/1.0"}, "")
 	if rr.Header().Get("Location") != "https://fallback.example/" || len(pub.evs) != 0 {
 		t.Fatalf("bot: %q events=%d", rr.Header().Get("Location"), len(pub.evs))
 	}
-	// Anonymous routed links route but record nothing (no owner, like Kutt).
-	rr = do(t, mux, "GET", "kutt.test", "/anonrd", map[string]string{"User-Agent": iphoneUA}, "")
+	// Anonymous routed links route but record nothing (no owner, like upstream).
+	rr = do(t, mux, "GET", "tusk.test", "/anonrd", map[string]string{"User-Agent": iphoneUA}, "")
 	if rr.Header().Get("Location") != "https://apps.apple.com/app/id1" || len(pub.evs) != 0 {
 		t.Fatalf("anon: %q events=%d", rr.Header().Get("Location"), len(pub.evs))
 	}
-	// ROUTING_ENABLED=false: exactly the Kutt behaviour.
+	// ROUTING_ENABLED=false: exactly the upstream behaviour.
 	h.o.RoutingEnabled = false
-	rr = do(t, mux, "GET", "kutt.test", "/rd", map[string]string{"User-Agent": iphoneUA}, "")
+	rr = do(t, mux, "GET", "tusk.test", "/rd", map[string]string{"User-Agent": iphoneUA}, "")
 	if rr.Header().Get("Location") != "https://fallback.example/" || len(pub.evs) != 1 || pub.evs[0].V != 1 || pub.evs[0].Route != "" {
 		t.Fatalf("switch off: %q %+v", rr.Header().Get("Location"), pub.evs)
 	}
@@ -109,7 +109,7 @@ func TestRoutedBotsAndSwitch(t *testing.T) {
 
 func TestDeepLinkIntent(t *testing.T) {
 	_, _, mux := setupRouting(t)
-	rr := do(t, mux, "GET", "kutt.test", "/dl", map[string]string{"User-Agent": androidUA}, "")
+	rr := do(t, mux, "GET", "tusk.test", "/dl", map[string]string{"User-Agent": androidUA}, "")
 	want := "intent://item/42?ref=x#Intent;scheme=myapp;S.browser_fallback_url=" +
 		url.QueryEscape("https://play.google.com/store/apps/details?id=com.x") + ";end"
 	if got, _ := url.PathUnescape(rr.Header().Get("Location")); rr.Code != 302 || got != mustUnescape(want) {
@@ -117,7 +117,7 @@ func TestDeepLinkIntent(t *testing.T) {
 	}
 	// iOS: universal links are handled by the OS before the request; the
 	// browser that does reach us goes to the store.
-	rr = do(t, mux, "GET", "kutt.test", "/dl", map[string]string{"User-Agent": iphoneUA}, "")
+	rr = do(t, mux, "GET", "tusk.test", "/dl", map[string]string{"User-Agent": iphoneUA}, "")
 	if rr.Header().Get("Location") != "https://apps.apple.com/app/id1" {
 		t.Fatalf("ios deeplink: %q", rr.Header().Get("Location"))
 	}
@@ -127,7 +127,7 @@ func mustUnescape(s string) string { u, _ := url.PathUnescape(s); return u }
 
 func TestSmartPage(t *testing.T) {
 	_, pub, mux := setupRouting(t)
-	rr := do(t, mux, "GET", "kutt.test", "/sm", map[string]string{"User-Agent": iphoneUA}, "")
+	rr := do(t, mux, "GET", "tusk.test", "/sm", map[string]string{"User-Agent": iphoneUA}, "")
 	body := rr.Body.String()
 	if rr.Code != 200 || !strings.Contains(rr.Header().Get("Content-Type"), "text/html") {
 		t.Fatalf("smart: %d %s", rr.Code, rr.Header().Get("Content-Type"))
@@ -149,22 +149,22 @@ func TestSmartPage(t *testing.T) {
 		t.Fatalf("cache/events: %q %+v", rr.Header().Get("Cache-Control"), pub.evs)
 	}
 	// Android gets the intent URL as the app link.
-	rr = do(t, mux, "GET", "kutt.test", "/sm", map[string]string{"User-Agent": androidUA}, "")
+	rr = do(t, mux, "GET", "tusk.test", "/sm", map[string]string{"User-Agent": androidUA}, "")
 	if !strings.Contains(rr.Body.String(), `href="intent://item/42?ref=x#Intent;scheme=myapp;`) {
 		t.Fatalf("android smart:\n%s", rr.Body.String())
 	}
 	// Desktop without app URL: no interstitial.
-	rr = do(t, mux, "GET", "kutt.test", "/sm", map[string]string{"User-Agent": windowsUA}, "")
+	rr = do(t, mux, "GET", "tusk.test", "/sm", map[string]string{"User-Agent": windowsUA}, "")
 	if rr.Code != 302 || rr.Header().Get("Location") != "https://www.example.com/item/42" {
 		t.Fatalf("desktop smart: %d %q", rr.Code, rr.Header().Get("Location"))
 	}
 	// A Mac may be an iPad: page with the iOS rule for touch devices.
-	rr = do(t, mux, "GET", "kutt.test", "/sm", map[string]string{"User-Agent": macUA}, "")
+	rr = do(t, mux, "GET", "tusk.test", "/sm", map[string]string{"User-Agent": macUA}, "")
 	if rr.Code != 200 || !strings.Contains(rr.Body.String(), `"ipad":{"app":"myapp://item/42?ref=x","web":"https://apps.apple.com/app/id1"}`) {
 		t.Fatalf("mac smart: %d\n%s", rr.Code, rr.Body.String())
 	}
 	// In-app browser: hint, no auto navigation flag.
-	rr = do(t, mux, "GET", "kutt.test", "/sm", map[string]string{"User-Agent": instaUA}, "")
+	rr = do(t, mux, "GET", "tusk.test", "/sm", map[string]string{"User-Agent": instaUA}, "")
 	if !strings.Contains(rr.Body.String(), "Open in browser") || !strings.Contains(rr.Body.String(), `"inapp":"instagram"`) {
 		t.Fatalf("inapp smart:\n%s", rr.Body.String())
 	}
@@ -176,17 +176,17 @@ func TestSmartPageEscaping(t *testing.T) {
 	evil[domain.PlatformIOS] = domain.RouteRule{Enabled: true, URL: `https://x.example/"><script>alert(1)</script>`, AppURL: "javascript:alert(1)"}
 	h.o.Links.(*fakeLinks).m[key{addr: "evil"}] = &domain.RedirectTarget{LinkID: 30, UUID: "u30", Target: "https://t.example/",
 		Routing: &domain.Routing{Enabled: true, Mode: domain.ModeSmart, Rules: evil}}
-	rr := do(t, mux, "GET", "kutt.test", "/evil", map[string]string{"User-Agent": macUA}, "")
+	rr := do(t, mux, "GET", "tusk.test", "/evil", map[string]string{"User-Agent": macUA}, "")
 	body := rr.Body.String()
 	if strings.Contains(body, "<script>alert") || strings.Contains(body, "javascript:alert") {
 		t.Fatalf("unescaped content:\n%s", body)
 	}
-	// Kutt accepts any target scheme; the smart page must never script-navigate to one.
+	// Upstream accepts any target scheme; the smart page must never script-navigate to one.
 	h.o.Links.(*fakeLinks).m[key{addr: "jsfb"}] = &domain.RedirectTarget{LinkID: 32, UUID: "u32", Target: "javascript:alert(document.domain)",
 		Routing: &domain.Routing{Enabled: true, Mode: domain.ModeSmart, Rules: map[domain.Platform]domain.RouteRule{
 			domain.PlatformIOS: {Enabled: true, URL: "https://apps.apple.com/app/id1", AppURL: "myapp://x"}}}}
 	for _, ua := range []string{androidUA, macUA, kaiUA} {
-		rr = do(t, mux, "GET", "kutt.test", "/jsfb", map[string]string{"User-Agent": ua}, "")
+		rr = do(t, mux, "GET", "tusk.test", "/jsfb", map[string]string{"User-Agent": ua}, "")
 		if rr.Code != http.StatusFound || strings.Contains(rr.Body.String(), "<script") {
 			t.Fatalf("%s: non-web fallback rendered the smart page: %d", ua, rr.Code)
 		}
@@ -200,7 +200,7 @@ func TestProtectedRouted(t *testing.T) {
 	h.o.Links.(*fakeLinks).m[key{addr: "pwr"}] = &domain.RedirectTarget{LinkID: 31, UUID: id, UserID: ptr[int64](7), Target: "https://fallback.example/",
 		HasPassword: true, Routing: &domain.Routing{Enabled: true, Mode: domain.ModeSmart, Rules: rules()}}
 	h.o.Finder.(fakeFinder)[id] = &domain.Link{ID: 31, UUID: id, Address: "pwr", Target: "https://fallback.example/", UserID: ptr[int64](7), Password: ptr(string(hash))}
-	rr := do(t, mux, "POST", "kutt.test", "/api/v2/links/"+id+"/protected",
+	rr := do(t, mux, "POST", "tusk.test", "/api/v2/links/"+id+"/protected",
 		map[string]string{"Content-Type": "application/json", "User-Agent": androidUA}, `{"password":"secret"}`)
 	var out struct{ Target string }
 	json.Unmarshal(rr.Body.Bytes(), &out)
@@ -229,7 +229,7 @@ func TestWellKnown(t *testing.T) {
 	}
 	mux := http.NewServeMux()
 	h.RegisterWellKnown(mux)
-	rr := do(t, mux, "GET", "kutt.test", "/.well-known/apple-app-site-association", nil, "")
+	rr := do(t, mux, "GET", "tusk.test", "/.well-known/apple-app-site-association", nil, "")
 	if rr.Code != 200 || rr.Header().Get("Content-Type") != "application/json" {
 		t.Fatalf("aasa: %d %s", rr.Code, rr.Header().Get("Content-Type"))
 	}
@@ -257,7 +257,7 @@ func TestWellKnown(t *testing.T) {
 	if !strings.Contains(rr.Body.String(), `{"/":"/p/*"}`) || strings.Contains(rr.Body.String(), `{"/":"*"}`) {
 		t.Fatalf("custom domain aasa %s", rr.Body.String())
 	}
-	rr = do(t, mux, "GET", "kutt.test", "/.well-known/assetlinks.json", nil, "")
+	rr = do(t, mux, "GET", "tusk.test", "/.well-known/assetlinks.json", nil, "")
 	if rr.Code != 200 || !strings.Contains(rr.Body.String(), `"package_name":"com.x"`) || !strings.Contains(rr.Body.String(), `"sha256_cert_fingerprints":["AA:BB"]`) {
 		t.Fatalf("assetlinks %d %s", rr.Code, rr.Body.String())
 	}
@@ -296,7 +296,7 @@ func BenchmarkRedirectRouted(b *testing.B) {
 	h.o.Metrics = nil
 	h.o.Publisher = discardPub{}
 	req := httptest.NewRequest("GET", "/rd", nil)
-	req.Host = "kutt.test"
+	req.Host = "tusk.test"
 	req.Header.Set("User-Agent", iphoneUA)
 	req.SetPathValue("id", "rd")
 	w := &nopWriter{h: http.Header{}}

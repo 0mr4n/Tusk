@@ -14,7 +14,7 @@ import (
 	"github.com/0mr4n/Tusk/internal/store"
 )
 
-// BcryptCost matches Kutt (link.queries.js:204, auth.handler.js:98).
+// BcryptCost matches upstream (link.queries.js:204, auth.handler.js:98).
 const BcryptCost = 12
 
 type linkStore struct{ s *DB }
@@ -50,7 +50,7 @@ func scanLink(r rowScanner, extra ...any) (*domain.Link, error) {
 }
 
 // validUUID guards postgres uuid columns: a malformed id would be a 22P02 error in pg
-// (a 500 in Kutt); Tusk treats it as "not found".
+// (a 500 in upstream); Tusk treats it as "not found".
 func (s *DB) validUUID(u string) bool {
 	if s.d != dPostgres {
 		return true
@@ -353,8 +353,8 @@ func (ls *linkStore) Update(ctx context.Context, f store.LinkFilter, in store.Up
 		}
 		return nil, err
 	}
-	// Re-select by the same match (Kutt semantics: an address change makes an
-	// address-based match miss the row, exactly like Kutt).
+	// Re-select by the same match (upstream semantics: an address change makes an
+	// address-based match miss the row, exactly like upstream).
 	f2 := f
 	if in.Address != nil && f.Address != nil && f.ID == nil && f.UUID == nil {
 		f2.Address = in.Address
@@ -544,7 +544,7 @@ func (ls *linkStore) Resolve(ctx context.Context, address string, domainID *int6
 	}
 	t.UserID = niPtr(userID)
 	t.Banned = bool(banned)
-	t.HasPassword = pw.Valid && pw.String != "" // Kutt: `if (link.password)`
+	t.HasPassword = pw.Valid && pw.String != "" // Upstream: `if (link.password)`
 	t.ExpireIn = expire.ptr()
 	if rEnable.Valid && rEnable.Bool && rMode.Valid {
 		// A corrupt rules value must not take the link down: fall back to the target.

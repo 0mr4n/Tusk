@@ -15,8 +15,8 @@ import (
 // ---------- rate limiting (helpers.handler.js:88-124) ----------
 
 // rateLimiter is a fixed-window counter like express-rate-limit's MemoryStore
-// / rate-limit-redis. Keys match Kutt ("rl:" + method + baseUrl + path + ":" + ip);
-// in Redis they get rate-limit-redis's default "rl:" prefix, so a Kutt and a
+// / rate-limit-redis. Keys match upstream ("rl:" + method + baseUrl + path + ":" + ip);
+// in Redis they get rate-limit-redis's default "rl:" prefix, so a Node.js and a
 // Tusk instance behind the same Redis share counters during cut-over.
 type rateLimiter struct {
 	enabled bool
@@ -79,8 +79,8 @@ func (l *rateLimiter) allow(ctx context.Context, key string, limit int, window t
 	return w.count <= limit, max(limit-w.count, 0), w.reset
 }
 
-// check applies a Kutt rateLimit({window, limit}) at the point in the chain
-// where Kutt mounts it (after validation). routeKey is baseUrl+path, e.g.
+// check applies an upstream rateLimit({window, limit}) at the point in the chain
+// where upstream mounts it (after validation). routeKey is baseUrl+path, e.g.
 // "/api/v2/auth/login".
 func (s *Server) rateLimit(w http.ResponseWriter, r *http.Request, windowSec, limit int) error {
 	if !s.rl.enabled {
@@ -162,7 +162,7 @@ func (c *statsCache) put(ctx context.Context, linkID int64, b []byte) {
 	c.m[linkID] = statsEntry{b: b, exp: c.now().Add(statsTTL)}
 }
 
-// statsJSON renders store.Stats in Kutt's key order
+// statsJSON renders store.Stats in upstream's key order
 // (lastYear, lastDay, lastMonth, lastWeek, updatedAt: visit.queries.js:164-187).
 func statsJSON(st *store.Stats) ([]byte, error) {
 	period := func(p store.PeriodStats) obj {

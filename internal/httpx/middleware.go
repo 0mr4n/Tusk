@@ -101,7 +101,7 @@ func RequestIDFrom(ctx context.Context) string {
 
 // ---------- recover ----------
 
-// Recover turns panics into a Kutt-shaped 500 {"error":"An error occurred."}.
+// Recover turns panics into a legacy-shaped 500 {"error":"An error occurred."}.
 func Recover(log *slog.Logger) Middleware {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -124,7 +124,7 @@ func Recover(log *slog.Logger) Middleware {
 // ---------- security headers ----------
 
 // Header values set by helmet 7.1.0 with contentSecurityPolicy disabled
-// (Kutt server.js:39). Captured from the real module:
+// (upstream server.js:39). Captured from the real module:
 // node -e 'helmet({contentSecurityPolicy:false})(...)'.
 // Slices are shared read-only; net/http never mutates them.
 var securityHeaders = [...]struct {

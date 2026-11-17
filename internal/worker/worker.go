@@ -1,5 +1,5 @@
 // Package worker aggregates VisitEvents into per-(link, hour) deltas and applies them,
-// and sweeps expired links (Kutt cron.js).
+// and sweeps expired links (upstream cron.js).
 package worker
 
 import (
@@ -34,7 +34,7 @@ type Worker struct {
 	RoutesApplied, RoutesFailed atomic.Uint64
 }
 
-// orphanSweep is how often tusk_* rows left behind by Node Kutt deletions are removed.
+// orphanSweep is how often tusk_* rows left behind by deletions in the Node.js original are removed.
 const orphanSweep = time.Hour
 
 // New builds a worker. linkResolver may be nil (no cache invalidation on sweep).
@@ -182,13 +182,13 @@ type foldKey struct {
 	hour   int64 // unix seconds of the UTC hour
 }
 
-// Fold aggregates events into deltas keyed by (link_id, UTC hour), applying Kutt's
+// Fold aggregates events into deltas keyed by (link_id, UTC hour), applying upstream's
 // normalization (queues/visit.js + visit.queries.js add):
-//   - country: upper alpha-2 -> lower-case; "" -> "unknown" (Kutt default "Unknown".toLowerCase())
+//   - country: upper alpha-2 -> lower-case; "" -> "unknown" (upstream default "Unknown".toLowerCase())
 //   - referrer: hostname without www (removeWww), "." -> "[dot]", lower-cased; "" -> "direct"
-//   - browser/os: Kutt bucket names; anything else -> "other"
+//   - browser/os: upstream bucket names; anything else -> "other"
 //
-// Events for anonymous links (UserID nil) are skipped: Kutt only queues a visit when
+// Events for anonymous links (UserID nil) are skipped: upstream only queues a visit when
 // `link.user_id && !isBot` (links.handler.js:529), so neither visits nor visit_count change.
 // Output order follows first appearance, so it is deterministic for a given batch.
 func Fold(batch []domain.VisitEvent) []store.VisitDelta {

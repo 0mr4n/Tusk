@@ -14,7 +14,7 @@ import { LinkActions } from "@/components/link-actions"
 import { isAdmin, useLinks, useMe } from "@/lib/api"
 import { copyText, formatNumber, msLong, relativeTime, stripProtocol, useDebounced } from "@/lib/format"
 
-/** Dashboard links table (Kutt partials/links/table.hbs), shown on the homepage for users. */
+/** Dashboard links table (upstream partials/links/table.hbs), shown on the homepage for users. */
 export function LinksTable() {
   const { data: me } = useMe()
   const [search, setSearch] = useState("")

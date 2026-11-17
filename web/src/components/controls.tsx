@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input"
 
 const PAGE_SIZES = [10, 25, 50, 100]
 
-/** Kutt table nav: limit 10/25/50/100 + prev/next over skip. */
+/** Upstream table nav: limit 10/25/50/100 + prev/next over skip. */
 export function TablePager({
   total,
   limit,

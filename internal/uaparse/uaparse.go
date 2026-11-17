@@ -1,14 +1,14 @@
-// Package uaparse reproduces Kutt's visit enrichment buckets exactly:
+// Package uaparse reproduces upstream's visit enrichment buckets exactly:
 //
 //   - Browser/OS: express-useragent 2.2.1 (UserAgent.hydrate: getOS, getPlatform,
-//     getBrowser, testMobile, testCaptiveNetwork) folded through Kutt's
+//     getBrowser, testMobile, testCaptiveNetwork) folded through upstream's
 //     server/utils/utils.js getUseragentBrowser (l.360-373) and getUseragentOS (l.379-394).
 //   - IsBot: isbot 5.1.19 (links.handler.js:532).
 //
 // Browser and OS use no regexp and do not allocate. The express-useragent regexes
 // used are all case-insensitive, so matching is done with ASCII case folding.
 //
-// Faithful quirks (kept on purpose, Kutt is the source of truth):
+// Faithful quirks (kept on purpose, upstream is the source of truth):
 //   - Safari is never reported: getUseragentBrowser has no isSafari branch, so Safari
 //     visits land in "other" and visits.br_safari stays 0 (utils.js:360-373).
 //   - Edge UAs (contain "Edg") are matched by express-useragent before Chrome, so they
@@ -20,7 +20,7 @@ import (
 	"unsafe"
 )
 
-// flags mirrors the subset of express-useragent AgentDetails that Kutt reads.
+// flags mirrors the subset of express-useragent AgentDetails that upstream reads.
 type flags struct {
 	isIE, isFirefox, isChrome, isOpera, isEdge bool
 
@@ -30,7 +30,7 @@ type flags struct {
 	isDesktop, isMobile                            bool
 }
 
-// Browser returns one of chrome|edge|firefox|ie|opera|other (Kutt never emits safari).
+// Browser returns one of chrome|edge|firefox|ie|opera|other (upstream never emits safari).
 func Browser(ua string) string {
 	var buf [lowerBuf]byte
 	orig := trim(ua)
@@ -133,7 +133,7 @@ func (f *flags) browser(orig, s string) {
 	}
 }
 
-// getOS: first match wins; only the flags matter to Kutt.
+// getOS: first match wins; only the flags matter to upstream.
 func (f *flags) getOS(s string) {
 	switch {
 	case containsFold(s, "windows nt 6.0"), containsFold(s, "windows nt 6.1"),

@@ -26,7 +26,7 @@ import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { copyText, stripProtocol } from "@/lib/format"
 
-/** QR code for a short URL (Kutt: handleQRCode + qrcode.min.js). */
+/** QR code for a short URL (upstream: handleQRCode + qrcode.min.js). */
 export function QRDialog({ url, open, onOpenChange }: { url: string; open: boolean; onOpenChange: (o: boolean) => void }) {
   const download = () => {
     const svg = document.getElementById("qr-svg")
@@ -69,7 +69,7 @@ export interface ConfirmOption {
 
 /**
  * Confirmation dialog used for delete/ban actions. `options` renders the
- * checkbox lists Kutt showed in its ban dialogs (e.g. "Ban link owner").
+ * checkbox lists upstream showed in its ban dialogs (e.g. "Ban link owner").
  */
 export function ConfirmDialog({
   open,

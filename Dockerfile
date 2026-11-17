@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1.7
 #
 # Tusk image: one distroless image with all four binaries.
-#   /usr/local/bin/tusk        all roles (default ENTRYPOINT, drop-in for Kutt)
+#   /usr/local/bin/tusk        all roles (default ENTRYPOINT)
 #   /usr/local/bin/redirector  hot path only
 #   /usr/local/bin/api         JSON API + web UI
 #   /usr/local/bin/worker      visit pipeline + expired-link sweeper
@@ -43,18 +43,17 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 # ---------- 3. runtime ----------
 FROM gcr.io/distroless/static-debian12:nonroot
 LABEL org.opencontainers.image.title="Tusk" \
-      org.opencontainers.image.description="High-traffic Go port of the Kutt URL shortener" \
+      org.opencontainers.image.description="High-traffic URL shortener" \
       org.opencontainers.image.source="https://github.com/0mr4n/Tusk" \
       org.opencontainers.image.licenses="MIT"
-WORKDIR /kutt
+WORKDIR /tusk
 COPY --from=go /out/tusk /out/redirector /out/api /out/worker /usr/local/bin/
-# Same paths as Kutt's image so existing volumes mount unchanged:
-#   /var/lib/kutt (sqlite DB_FILENAME) and /kutt/custom (TUSK_CUSTOM_DIR).
-COPY --from=go --chown=nonroot:nonroot /out/data /var/lib/kutt
-COPY --from=go --chown=nonroot:nonroot /out/custom /kutt/custom
+# Volumes: /var/lib/tusk (sqlite DB_FILENAME) and /tusk/custom (TUSK_CUSTOM_DIR).
+COPY --from=go --chown=nonroot:nonroot /out/data /var/lib/tusk
+COPY --from=go --chown=nonroot:nonroot /out/custom /tusk/custom
 ENV PORT=3000 \
-    TUSK_CUSTOM_DIR=/kutt/custom \
-    DB_FILENAME=/var/lib/kutt/data.sqlite \
+    TUSK_CUSTOM_DIR=/tusk/custom \
+    DB_FILENAME=/var/lib/tusk/data.sqlite \
     NODE_ENV=production
 EXPOSE 3000 3001 9090
 USER nonroot:nonroot

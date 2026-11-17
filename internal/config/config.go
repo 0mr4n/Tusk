@@ -1,8 +1,8 @@
 // Package config loads Tusk configuration from the environment.
 //
-// Every Kutt v3.2.6 variable (server/env.js) is honoured with the same name,
-// type and default so an existing Kutt .env works unchanged. Each variable
-// also accepts a <NAME>_FILE form (Docker secrets), matching Kutt.
+// Every upstream v3.2.6 variable (server/env.js) is honoured with the same name,
+// type and default so an existing upstream .env works unchanged. Each variable
+// also accepts a <NAME>_FILE form (Docker secrets), matching upstream.
 //
 // Tusk-only additions are grouped at the bottom (GEO_*, SERVICE_*, cache, events).
 package config
@@ -21,7 +21,7 @@ type GeoProvider string
 
 const (
 	// GeoAuto: trusted CDN header first, then the GeoIP file if configured, else "unknown".
-	// This mirrors Kutt, which used cf-ipcountry and fell back to geoip-lite.
+	// This mirrors upstream, which used cf-ipcountry and fell back to geoip-lite.
 	GeoAuto GeoProvider = "auto"
 	// GeoCloudflare: only the CDN country header (GEO_HEADER, default CF-IPCountry).
 	GeoCloudflare GeoProvider = "cloudflare"
@@ -34,7 +34,7 @@ const (
 // Config is the full runtime configuration. Field comments give the env var.
 type Config struct {
 	Port          int    // PORT (3000)
-	SiteName      string // SITE_NAME (Kutt default was "Kutt")
+	SiteName      string // SITE_NAME (Tusk)
 	DefaultDomain string // DEFAULT_DOMAIN (localhost:3000)
 	LinkLength    int    // LINK_LENGTH (6)
 	LinkAlphabet  string // LINK_CUSTOM_ALPHABET
@@ -44,7 +44,7 @@ type Config struct {
 	DBFilename string // DB_FILENAME (db/data)
 	DBHost     string // DB_HOST (localhost)
 	DBPort     int    // DB_PORT (5432)
-	DBName     string // DB_NAME (kutt)
+	DBName     string // DB_NAME (tusk)
 	DBUser     string // DB_USER (postgres)
 	DBPassword string // DB_PASSWORD
 	DBSSL      bool   // DB_SSL (false)
@@ -109,13 +109,13 @@ type Config struct {
 	// Hot-path cache (in-process LRU in front of Redis/DB).
 	LocalCacheSize int           // LOCAL_CACHE_SIZE entries (100000)
 	LocalCacheTTL  time.Duration // LOCAL_CACHE_TTL (30s) — bounded staleness after edits on other nodes
-	RedisCacheTTL  time.Duration // REDIS_CACHE_TTL (15m) — matches Kutt's 60*15
+	RedisCacheTTL  time.Duration // REDIS_CACHE_TTL (15m) — matches upstream's 60*15
 
 	// Visit event pipeline.
 	VisitBatchSize     int           // VISIT_BATCH_SIZE (500) events folded per DB flush
 	VisitFlushInterval time.Duration // VISIT_FLUSH_INTERVAL (1s)
 	VisitBufferSize    int           // VISIT_BUFFER_SIZE (100000) in-memory channel capacity
-	ExpiredLinkSweep   time.Duration // EXPIRED_LINK_SWEEP (30s) — Kutt cron.js interval
+	ExpiredLinkSweep   time.Duration // EXPIRED_LINK_SWEEP (30s) — upstream cron.js interval
 
 	StaticDir string // TUSK_CUSTOM_DIR (custom) — on-disk overrides for images/css
 
@@ -146,7 +146,7 @@ func LoadFrom(lookup func(string) (string, bool)) (*Config, error) {
 	c.DBFilename = e.str("DB_FILENAME", "db/data")
 	c.DBHost = e.str("DB_HOST", "localhost")
 	c.DBPort = e.int("DB_PORT", 5432)
-	c.DBName = e.str("DB_NAME", "kutt")
+	c.DBName = e.str("DB_NAME", "tusk")
 	c.DBUser = e.str("DB_USER", "postgres")
 	c.DBPassword = e.str("DB_PASSWORD", "")
 	c.DBSSL = e.bool("DB_SSL", false)
@@ -167,7 +167,7 @@ func LoadFrom(lookup func(string) (string, bool)) (*Config, error) {
 	c.CustomDomainUseHTTPS = e.bool("CUSTOM_DOMAIN_USE_HTTPS", false)
 	c.JWTSecret = e.str("JWT_SECRET", "")
 	if c.JWTSecret == "" && !c.Production {
-		c.JWTSecret = "securekey" // Kutt devDefault
+		c.JWTSecret = "securekey" // Upstream devDefault
 	}
 
 	c.MailEnabled = e.bool("MAIL_ENABLED", false)
@@ -298,8 +298,8 @@ type envReader struct {
 	errs   []error
 }
 
-// raw honours NAME_FILE (read + trim) like Kutt; empty values count as unset
-// (Kutt deletes empty JWT_SECRET / LINK_CUSTOM_ALPHABET).
+// raw honours NAME_FILE (read + trim) like upstream; empty values count as unset
+// (upstream deletes empty JWT_SECRET / LINK_CUSTOM_ALPHABET).
 func (e *envReader) raw(key string) (string, bool) {
 	if p, ok := e.lookup(key + "_FILE"); ok && p != "" {
 		if b, err := os.ReadFile(p); err == nil {

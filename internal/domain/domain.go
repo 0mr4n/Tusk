@@ -2,8 +2,8 @@
 // Tusk service. It has NO dependencies outside the standard library so that the
 // redirector, API and worker binaries can all import it.
 //
-// Entities mirror the Kutt v3.2.6 schema exactly (see docs/srs/part-A-data.md §2).
-// The database is shared with a running Kutt instance during migration, so
+// Entities mirror the upstream v3.2.6 schema exactly.
+// The database is shared with a running Node.js instance during migration, so
 // column names and semantics MUST NOT change.
 package domain
 
@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-// ---------- Entities (1:1 with Kutt tables) ----------
+// ---------- Entities (1:1 with upstream tables) ----------
 
 type Role string
 
@@ -76,7 +76,7 @@ type Link struct {
 	DomainAddress *string
 }
 
-// Host is a banned-destination-hostname record (Kutt "hosts" table).
+// Host is a banned-destination-hostname record (upstream "hosts" table).
 type Host struct {
 	ID         int64
 	Address    string
@@ -86,7 +86,7 @@ type Host struct {
 	UpdatedAt  time.Time
 }
 
-// IP is a banned IP record (Kutt "ips" table).
+// IP is a banned IP record (upstream "ips" table).
 type IP struct {
 	ID        int64
 	IP        string
@@ -221,7 +221,7 @@ type VisitEvent struct {
 	LinkID    int64     `json:"link_id"`
 	UserID    *int64    `json:"user_id,omitempty"`
 	Country   string    `json:"country"`  // ISO-3166 alpha-2 upper-case, or "" if unknown (worker writes "unknown")
-	Browser   string    `json:"browser"`  // chrome|edge|firefox|ie|opera|safari|other (Kutt buckets)
+	Browser   string    `json:"browser"`  // chrome|edge|firefox|ie|opera|safari|other (upstream buckets)
 	OS        string    `json:"os"`       // android|ios|linux|macos|windows|other
 	Referrer  string    `json:"referrer"` // hostname without www, or "" for Direct
 	Timestamp time.Time `json:"ts"`       // UTC
@@ -272,7 +272,7 @@ var (
 	ErrExpired      = errors.New("expired")
 )
 
-// AppError carries an HTTP status and user-facing message, like Kutt's CustomError.
+// AppError carries an HTTP status and user-facing message, like upstream's CustomError.
 type AppError struct {
 	Status  int
 	Message string

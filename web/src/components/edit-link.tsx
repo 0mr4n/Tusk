@@ -63,9 +63,9 @@ export function EditLinkDialog({
     e.preventDefault()
     setPending(true)
     setError(null)
-    // Kutt semantics: an empty password removes it; the untouched mask keeps it.
+    // Upstream semantics: an empty password removes it; the untouched mask keeps it.
     const input: EditLinkInput = { target, address, description, expire_in: expireIn, password }
-    // Only send routing when it was edited, so Kutt-style edits stay unchanged.
+    // Only send routing when it was edited, so legacy-style edits stay unchanged.
     if (routingTouched) {
       if (draftIsEmpty(routing)) {
         if (link.routing) input.routing = null

@@ -1,11 +1,11 @@
 /**
- * Typed client for Kutt's /api/v2 JSON API (the only backend the SPA talks to).
+ * Typed client for upstream's /api/v2 JSON API (the only backend the SPA talks to).
  *
  * Every endpoint the UI uses lives in this file so the shapes can be reconciled
- * against the Go handlers in one place. Shapes follow Kutt v3.2.6
+ * against the Go handlers in one place. Shapes follow upstream v3.2.6
  * (server/utils/utils.js `sanitize.*`, server/handlers/*.handler.js). Anything
- * that Kutt did not expose as JSON (because it rendered HTML) is marked
- * "TUSK EXTENSION" and is listed in docs/CONTRACTS.md.
+ * that upstream did not expose as JSON (because it rendered HTML) is marked
+ * "TUSK EXTENSION" and is listed in docs/API-EXTENSIONS.md.
  *
  * Auth: the httpOnly `token` cookie set by POST /api/v2/auth/login. We always
  * send credentials: "include" and never read or store the JWT in JS.
@@ -24,7 +24,7 @@ export const API_BASE = "/api/v2"
 // Shapes
 // ---------------------------------------------------------------------------
 
-/** GET /api/v2/config (TUSK EXTENSION, public). Mirrors Kutt's res.locals. */
+/** GET /api/v2/config (TUSK EXTENSION, public). Mirrors upstream's res.locals. */
 export interface PublicConfig {
   site_name: string
   default_domain: string
@@ -119,7 +119,7 @@ export interface Domain {
   updated_at: string
 }
 
-/** GET /api/v2/users — Kutt returns {apikey, email, domains}; Tusk adds id/role/verified. */
+/** GET /api/v2/users — upstream returns {apikey, email, domains}; Tusk adds id/role/verified. */
 export interface CurrentUser {
   apikey: string | null
   email: string
@@ -142,7 +142,7 @@ export interface Link {
   target: string
   visit_count: number
   domain: string | null
-  /** full short URL, e.g. https://kutt.it/abc */
+  /** full short URL, e.g. https://tusk.example/abc */
   link: string
   /** TUSK EXTENSION: present only on links with platform routing. */
   routing?: Routing
@@ -250,7 +250,7 @@ export interface CreateUserInput {
 // Transport
 // ---------------------------------------------------------------------------
 
-/** Kutt error body: { error: string } (helpers.handler.js `error`). */
+/** Upstream error body: { error: string } (helpers.handler.js `error`). */
 export class ApiError extends Error {
   readonly status: number
   constructor(status: number, message: string) {
@@ -322,7 +322,7 @@ export const api = {
     request<{ message: string }>("POST", "/auth/signup", { body: { email, password } }),
   createAdmin: (email: string, password: string) =>
     request<{ token: string }>("POST", "/auth/create-admin", { body: { email, password } }),
-  /** TUSK EXTENSION: clears the httpOnly cookie (Kutt did this in the /logout page render). */
+  /** TUSK EXTENSION: clears the httpOnly cookie (upstream did this in the /logout page render). */
   logout: () => request<unknown>("POST", "/auth/logout"),
   changePassword: (currentpassword: string, newpassword: string) =>
     request<{ message: string }>("POST", "/auth/change-password", { body: { currentpassword, newpassword } }),

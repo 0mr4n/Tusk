@@ -113,7 +113,7 @@ func TestAuthRoutes(t *testing.T) {
 		{"signup disabled", "POST", "/auth/signup", "", map[string]any{}, 400, `{"error":"Request is not allowed."}`},
 		{"reset disabled", "POST", "/auth/reset-password", "", map[string]any{"email": "a@b.co"}, 400, `{"error":"Request is not allowed."}`},
 		{"change-email disabled", "POST", "/auth/change-email", e.jwt(e.user), map[string]any{}, 400, `{"error":"Request is not allowed."}`},
-		{"report disabled", "POST", "/links/report", "", map[string]any{"link": "kutt.test/x"}, 400, `{"error":"Request is not allowed."}`},
+		{"report disabled", "POST", "/links/report", "", map[string]any{"link": "tusk.test/x"}, 400, `{"error":"Request is not allowed."}`},
 		{"create-admin exists", "POST", "/auth/create-admin", "", map[string]any{"email": "b@b.co", "password": "longenough"}, 400, `{"error":"Can not create the admin user because a user already exists."}`},
 		{"create-admin invalid", "POST", "/auth/create-admin", "", map[string]any{"email": "b@b.co"}, 400, `{"error":"Password is not valid."}`},
 		{"change-password wrong", "POST", "/auth/change-password", e.jwt(e.user), map[string]any{"currentpassword": "wrongpass1", "newpassword": "newpass123"}, 401, `{"error":"Current password is not correct."}`},
@@ -179,7 +179,7 @@ func TestMailFlows(t *testing.T) {
 	e := newEnv(t, func(c *config.Config) {
 		c.MailEnabled = true
 		c.DisallowRegistration = false
-		c.ReportEmail = "abuse@kutt.test"
+		c.ReportEmail = "abuse@tusk.test"
 	})
 	// signup
 	r := e.do("POST", "/api/v2/auth/signup", "", map[string]any{"email": "new@example.com", "password": "password1"})
@@ -228,7 +228,7 @@ func TestMailFlows(t *testing.T) {
 	}
 	// change email
 	jwt := e.jwt(e.user)
-	if r := e.do("POST", "/api/v2/auth/change-email", jwt, map[string]any{"email": "admin@kutt.test", "password": "brandnew1"}); r.body != `{"error":"Can't use this email address."}` {
+	if r := e.do("POST", "/api/v2/auth/change-email", jwt, map[string]any{"email": "admin@tusk.test", "password": "brandnew1"}); r.body != `{"error":"Can't use this email address."}` {
 		t.Fatal(r.body)
 	}
 	if r := e.do("POST", "/api/v2/auth/change-email", jwt, map[string]any{"email": "moved@example.com", "password": "wrongpass"}); r.code != 401 {
@@ -255,8 +255,8 @@ func TestMailFlows(t *testing.T) {
 	// report
 	runCases(t, e, []tc{
 		{"report missing", "POST", "/links/report", "", map[string]any{}, 400, `{"error":"No link has been provided."}`},
-		{"report foreign", "POST", "/links/report", "", map[string]any{"link": "https://evil.com/x"}, 400, `{"error":"You can only report a kutt.test link."}`},
-		{"report ok", "POST", "/links/report", "", map[string]any{"link": "kutt.test/abc"}, 200, `{"message":"Thanks for the report, we'll take actions shortly."}`},
+		{"report foreign", "POST", "/links/report", "", map[string]any{"link": "https://evil.com/x"}, 400, `{"error":"You can only report a tusk.test link."}`},
+		{"report ok", "POST", "/links/report", "", map[string]any{"link": "tusk.test/abc"}, 200, `{"message":"Thanks for the report, we'll take actions shortly."}`},
 	})
 }
 
@@ -274,7 +274,7 @@ func TestCreateLinkValidation(t *testing.T) {
 		{"target too long", "POST", "/links", "user", map[string]any{"target": "https://a.com/" + strings.Repeat("a", 2040)}, 400, `{"error":"Maximum URL length is 2040."}`},
 		{"target invalid", "POST", "/links", "user", map[string]any{"target": "not a url"}, 400, `{"error":"URL is not valid."}`},
 		{"target private ip", "POST", "/links", "user", map[string]any{"target": "http://192.168.1.1/"}, 400, `{"error":"URL is not valid."}`},
-		{"target default domain", "POST", "/links", "user", map[string]any{"target": "https://www.kutt.test/abc"}, 400, `{"error":"kutt.test URLs are not allowed."}`},
+		{"target default domain", "POST", "/links", "user", map[string]any{"target": "https://www.tusk.test/abc"}, 400, `{"error":"tusk.test URLs are not allowed."}`},
 		{"password anon", "POST", "/links", "", map[string]any{"target": "https://a.com", "password": "abc"}, 400, only},
 		{"customurl anon", "POST", "/links", "", map[string]any{"target": "https://a.com", "customurl": "abc"}, 400, only},
 		{"reuse anon", "POST", "/links", "", map[string]any{"target": "https://a.com", "reuse": true}, 400, only},
@@ -314,7 +314,7 @@ func TestLinkLifecycle(t *testing.T) {
 	}
 	m := r.json(t)
 	id := m["id"].(string)
-	if m["target"] != "http://example.com/path?q=1" || m["password"] != true || m["link"] != "https://kutt.test/my-link" ||
+	if m["target"] != "http://example.com/path?q=1" || m["password"] != true || m["link"] != "https://tusk.test/my-link" ||
 		m["description"] != "hello" || m["expire_in"] != "2026-09-28T14:00:00.000Z" || m["visit_count"] != float64(0) {
 		t.Fatalf("create json %s", r.body)
 	}
@@ -327,7 +327,7 @@ func TestLinkLifecycle(t *testing.T) {
 	}
 	// anonymous create
 	r = e.do("POST", "/api/v2/links", "", map[string]any{"target": "https://anon.example"})
-	if r.code != 201 || !strings.HasPrefix(r.json(t)["link"].(string), "https://kutt.test/") || len(r.json(t)["address"].(string)) != 6 {
+	if r.code != 201 || !strings.HasPrefix(r.json(t)["link"].(string), "https://tusk.test/") || len(r.json(t)["address"].(string)) != 6 {
 		t.Fatalf("anon %d %s", r.code, r.body)
 	}
 	// custom domain + reuse
@@ -362,7 +362,7 @@ func TestLinkLifecycle(t *testing.T) {
 		{"edit missing", "PATCH", "/links/22222222-2222-2222-2222-222222222222", "user", map[string]any{"target": "https://b.com"}, 500, `{"error":"Link was not found."}`},
 	})
 	r = e.do("PATCH", "/api/v2/links/"+id, "user", map[string]any{"address": "renamed", "target": "https://b.com", "password": "••••••"})
-	if r.code != 200 || r.json(t)["address"] != "renamed" || r.json(t)["password"] != true || r.json(t)["link"] != "https://kutt.test/renamed" {
+	if r.code != 200 || r.json(t)["address"] != "renamed" || r.json(t)["password"] != true || r.json(t)["link"] != "https://tusk.test/renamed" {
 		t.Fatalf("edit %d %s", r.code, r.body)
 	}
 	inv := strings.Join(e.res.Invalidations(), ",")
@@ -387,7 +387,7 @@ func TestLinkLifecycle(t *testing.T) {
 		t.Fatal(r.body)
 	}
 	// admin list golden
-	r = e.do("GET", "/api/v2/links/admin?domain=kutt.test", "admin", nil)
+	r = e.do("GET", "/api/v2/links/admin?domain=tusk.test", "admin", nil)
 	if r.code != 200 || r.json(t)["total"] != float64(2) {
 		t.Fatalf("admin list default domain %s", r.body)
 	}
@@ -515,12 +515,12 @@ func TestDomains(t *testing.T) {
 		{"missing", "POST", "/domains", "user", map[string]any{}, 400, `{"error":"Domain is not valid."}`},
 		{"short", "POST", "/domains", "user", map[string]any{"address": "ab"}, 400, `{"error":"Domain length must be between 3 and 64."}`},
 		{"invalid", "POST", "/domains", "user", map[string]any{"address": "not a domain"}, 400, `{"error":"Domain is not valid."}`},
-		{"default", "POST", "/domains", "user", map[string]any{"address": "https://www.kutt.test"}, 400, `{"error":"You can't use the default domain."}`},
+		{"default", "POST", "/domains", "user", map[string]any{"address": "https://www.tusk.test"}, 400, `{"error":"You can't use the default domain."}`},
 		{"owned", "POST", "/domains", "user", map[string]any{"address": "owned.example"}, 400, `{"error":"You can't add this domain."}`},
 		{"banned", "POST", "/domains", "user", map[string]any{"address": "bad.example"}, 400, `{"error":"You can't add this domain."}`},
 		{"homepage bad", "POST", "/domains", "user", map[string]any{"address": "fresh.example", "homepage": "nope nope"}, 400, `{"error":"Homepage is not valid."}`},
 		{"admin exists", "POST", "/domains/admin", "admin", map[string]any{"address": "owned.example"}, 400, `{"error":"Domain already exists."}`},
-		{"admin default", "POST", "/domains/admin", "admin", map[string]any{"address": "kutt.test"}, 400, `{"error":"You can't add the default domain."}`},
+		{"admin default", "POST", "/domains/admin", "admin", map[string]any{"address": "tusk.test"}, 400, `{"error":"You can't add the default domain."}`},
 		{"remove bad id", "DELETE", "/domains/xyz", "user", nil, 400, `{"error":"ID is invalid."}`},
 		{"remove not mine", "DELETE", "/domains/55555555-5555-5555-5555-555555555555", "user", nil, 400, `{"error":"Could not delete the domain."}`},
 		{"admin remove bad", "DELETE", "/domains/admin/x", "admin", nil, 400, `{"error":"ID is invalid."}`},

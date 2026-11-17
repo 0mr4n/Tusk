@@ -106,7 +106,7 @@ func (s *Server) signup(w http.ResponseWriter, r *http.Request) error {
 	}
 	if err := s.o.Mailer.SendVerification(ctx, u.Email, token); err != nil {
 		s.log.Error("send verification", "err", err)
-		return kuttErr("Couldn't send verification email. Try again later.")
+		return serverErr("Couldn't send verification email. Try again later.")
 	}
 	writeJSON(w, http.StatusCreated, obj{{"message", "A verification email has been sent."}})
 	return nil
@@ -140,7 +140,7 @@ func (s *Server) createAdmin(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	tok, err := s.issue(w, u) // Kutt sets the cookie only for HTML; the SPA needs it (CONTRACTS.md).
+	tok, err := s.issue(w, u) // Upstream sets the cookie only for HTML; the SPA needs it.
 	if err != nil {
 		return err
 	}
@@ -173,7 +173,7 @@ func (s *Server) changePassword(w http.ResponseWriter, r *http.Request) error {
 	}
 	id := p.User.ID
 	if _, err := s.st.Users().Update(r.Context(), store.UserFilter{ID: &id}, store.UpdateUser{Password: &hash}); err != nil {
-		return kuttErr("Couldn't change the password. Try again later.")
+		return serverErr("Couldn't change the password. Try again later.")
 	}
 	return message(w, http.StatusOK, "Your password has been changed successfully.")
 }
@@ -216,7 +216,7 @@ func (s *Server) changeEmailRequest(w http.ResponseWriter, r *http.Request) erro
 	}
 	if err := s.o.Mailer.SendChangeEmail(ctx, email, token); err != nil {
 		s.log.Error("send change-email", "err", err)
-		return kuttErr("Couldn't send verification email. Try again later.")
+		return serverErr("Couldn't send verification email. Try again later.")
 	}
 	return message(w, http.StatusOK, "A verification link has been sent to the requested email address.")
 }
@@ -237,7 +237,7 @@ func (s *Server) generateAPIKey(w http.ResponseWriter, r *http.Request) error {
 	key := nanoid(nanoidURLAlphabet, 40)
 	id := p.User.ID
 	if _, err := s.st.Users().Update(r.Context(), store.UserFilter{ID: &id}, store.UpdateUser{APIKey: &key}); err != nil {
-		return kuttErr("Couldn't generate API key. Please try again later.")
+		return serverErr("Couldn't generate API key. Please try again later.")
 	}
 	writeJSON(w, http.StatusCreated, obj{{"apikey", key}})
 	return nil
@@ -267,7 +267,7 @@ func (s *Server) resetPassword(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	if err == nil && u != nil {
-		// Fire-and-forget like Kutt (errors are only logged).
+		// Fire-and-forget like upstream (errors are only logged).
 		go func(to string) {
 			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 			defer cancel()
@@ -306,9 +306,9 @@ func (s *Server) newPassword(w http.ResponseWriter, r *http.Request) error {
 	_, err = s.st.Users().Update(r.Context(), store.UserFilter{ResetPasswordToken: &tok, TokenNotExpired: &now},
 		store.UpdateUser{Password: &hash, ClearResetPassword: true})
 	if err != nil {
-		return kuttErr("Could not set the password. Please try again later.")
+		return serverErr("Could not set the password. Please try again later.")
 	}
-	// Kutt renders new_password_success; JSON form documented in API-EXTENSIONS.md.
+	// Upstream renders new_password_success; JSON form documented in API-EXTENSIONS.md.
 	return message(w, http.StatusOK, "Your password has been changed successfully.")
 }
 
@@ -318,7 +318,7 @@ func (s *Server) logout(w http.ResponseWriter, r *http.Request) error {
 	return message(w, http.StatusOK, "Logged out.")
 }
 
-// POST /auth/verify/{token} (Tusk extension; Kutt: GET /verify/:token render + auth.verify)
+// POST /auth/verify/{token} (Tusk extension; upstream: GET /verify/:token render + auth.verify)
 func (s *Server) verifyEmail(w http.ResponseWriter, r *http.Request) error {
 	tok := r.PathValue("token")
 	now := s.o.Now().UTC()
@@ -339,7 +339,7 @@ func (s *Server) verifyEmail(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
-// POST /auth/verify-email/{token} (Tusk extension; Kutt: GET /verify-email/:token + auth.changeEmail)
+// POST /auth/verify-email/{token} (Tusk extension; upstream: GET /verify-email/:token + auth.changeEmail)
 func (s *Server) verifyChangeEmail(w http.ResponseWriter, r *http.Request) error {
 	tok := r.PathValue("token")
 	now := s.o.Now().UTC()

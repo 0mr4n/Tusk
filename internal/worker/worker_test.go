@@ -24,7 +24,7 @@ func TestFold(t *testing.T) {
 		{LinkID: 1, UserID: uid(9), Browser: "Firefox", OS: "linux", Country: "", Referrer: "", Timestamp: h.Add(40 * time.Minute)},
 		{LinkID: 1, UserID: uid(9), Browser: "weird", OS: "beos", Country: "de", Referrer: "News.YCombinator.com", Timestamp: h.Add(50 * time.Minute)},
 		{LinkID: 2, UserID: uid(9), Browser: "safari", OS: "ios", Timestamp: h},
-		{LinkID: 3, UserID: nil, Browser: "chrome", Timestamp: h}, // anonymous: Kutt doesn't track
+		{LinkID: 3, UserID: nil, Browser: "chrome", Timestamp: h}, // anonymous: upstream doesn't track
 	}
 	d := Fold(batch)
 	if len(d) != 3 {
@@ -121,7 +121,7 @@ func TestFoldRoutes(t *testing.T) {
 		{V: 2, LinkID: 1, UserID: uid(1), Route: "fallback", PlatformOS: "other", Device: "other", Timestamp: now.Add(5 * time.Minute)},
 		{V: 2, LinkID: 1, UserID: uid(1), Route: "weird", PlatformOS: "beos", Device: "watch", Timestamp: now},
 		{V: 2, LinkID: 1, UserID: uid(1), Route: "android", PlatformOS: "android", Device: "mobile", Timestamp: now.Add(time.Hour)},
-		{V: 2, LinkID: 2, Route: "ios", Timestamp: now}, // anonymous: skipped like Kutt
+		{V: 2, LinkID: 2, Route: "ios", Timestamp: now}, // anonymous: skipped like upstream
 	}
 	d := FoldRoutes(batch)
 	if len(d) != 2 {
@@ -168,7 +168,7 @@ func TestWorkerAppliesRoutes(t *testing.T) {
 	}
 	got, _ := db.Links().Find(ctx, store.LinkFilter{ID: &l.ID})
 	if got.VisitCount != 31 {
-		t.Fatalf("visit_count %d (routed clicks must still count as Kutt visits)", got.VisitCount)
+		t.Fatalf("visit_count %d (routed clicks must still count as regular visits)", got.VisitCount)
 	}
 	st, err := db.Routing().RouteStats(ctx, l.ID, time.Now())
 	if err != nil || st.LastDay.Total != 30 || st.LastDay.Stats.Route[0].Name != "ios" || st.LastDay.Stats.Route[0].Value != 20 {

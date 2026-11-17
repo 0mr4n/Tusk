@@ -1,6 +1,6 @@
-# Tusk all-in-one with PostgreSQL + Redis (mirrors Kutt's docker-compose.postgres.yml).
+# Tusk all-in-one with PostgreSQL + Redis.
 #
-#   DB_NAME=kutt DB_USER=kutt DB_PASSWORD=change-me JWT_SECRET=... \
+#   DB_NAME=tusk DB_USER=tusk DB_PASSWORD=change-me JWT_SECRET=... \
 #     docker compose -f docker-compose.postgres.yml up -d
 services:
   server:
@@ -9,13 +9,13 @@ services:
     image: ${TUSK_IMAGE:-ghcr.io/0mr4n/tusk:latest}
     restart: unless-stopped
     volumes:
-      - custom:/kutt/custom
+      - custom:/tusk/custom
     environment:
       DB_CLIENT: pg
       DB_HOST: postgres
       DB_PORT: 5432
-      DB_NAME: ${DB_NAME:-kutt}
-      DB_USER: ${DB_USER:-kutt}
+      DB_NAME: ${DB_NAME:-tusk}
+      DB_USER: ${DB_USER:-tusk}
       DB_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD}
       REDIS_ENABLED: "true"
       REDIS_HOST: redis
@@ -38,8 +38,8 @@ services:
     volumes:
       - db_data_pg:/var/lib/postgresql/data
     environment:
-      POSTGRES_DB: ${DB_NAME:-kutt}
-      POSTGRES_USER: ${DB_USER:-kutt}
+      POSTGRES_DB: ${DB_NAME:-tusk}
+      POSTGRES_USER: ${DB_USER:-tusk}
       POSTGRES_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD}
     expose:
       - 5432

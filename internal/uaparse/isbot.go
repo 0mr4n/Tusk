@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-// IsBot ports isbot 5.1.19 (the version pinned by Kutt, package.json) used at
+// IsBot ports isbot 5.1.19 (the version pinned by upstream, package.json) used at
 // links.handler.js:532. isbot(ua) is `Boolean(ua) && /pattern/i.test(ua)`, so an
 // EMPTY User-Agent is NOT a bot (verified in node_modules/isbot/index.js).
 //

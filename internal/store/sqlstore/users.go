@@ -211,7 +211,7 @@ func (us *userStore) Update(ctx context.Context, f store.UserFilter, in store.Up
 // Remove: user.queries.js remove:97-105 relies on FK cascades (links, visits CASCADE;
 // domains SET NULL). Done explicitly too, so legacy SQLite DBs created without enforced
 // FKs behave the same. banned_by_id references are nulled first so removing an admin
-// who banned things doesn't fail on the (NO ACTION) banned_by_id FKs (Kutt would 500).
+// who banned things doesn't fail on the (NO ACTION) banned_by_id FKs (upstream would 500).
 func (us *userStore) Remove(ctx context.Context, id int64) error {
 	s := us.s
 	return s.inTx(ctx, func(tx *sql.Tx) error {

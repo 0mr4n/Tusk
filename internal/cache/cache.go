@@ -23,7 +23,7 @@ import (
 )
 
 const (
-	// KeyPrefix keeps Tusk's keys apart from Kutt's (Kutt uses bare "l:", "d:" … keys).
+	// KeyPrefix keeps Tusk's keys apart from upstream's (upstream uses bare "l:", "d:" … keys).
 	KeyPrefix = "tusk:"
 	// InvalidationChannel carries "l:<domainID>:<address>" / "d:<address>" messages.
 	InvalidationChannel = "tusk:inval"
@@ -57,7 +57,7 @@ func NewRedis(cfg *config.Config) (*redis.Client, error) {
 
 type linkKey struct {
 	address  string
-	domainID int64 // 0 = default domain (Kutt ids start at 1)
+	domainID int64 // 0 = default domain (upstream ids start at 1)
 }
 
 func hashLinkKey(seed maphash.Seed, k linkKey) uint64 {
@@ -218,7 +218,7 @@ func (r *LinkResolver) dropLocal(msg string) bool {
 
 // DomainResolver implements domain.DomainResolver (links.handler.js redirect:467-471):
 // host = removeWww(Host); host == DEFAULT_DOMAIN -> nil; else domain.find({address: host}).
-// An unknown host also yields nil (Kutt then looks the link up with domain_id NULL).
+// An unknown host also yields nil (upstream then looks the link up with domain_id NULL).
 type DomainResolver struct {
 	domains       store.DomainStore
 	rdb           *redis.Client
@@ -247,7 +247,7 @@ func NewDomainResolver(domains store.DomainStore, rdb *redis.Client, cfg *config
 // anywhere in the string, not only a prefix.
 func removeWww(host string) string { return strings.Replace(host, "www.", "", 1) }
 
-// NormalizeHost lower-cases and applies Kutt's removeWww.
+// NormalizeHost lower-cases and applies upstream's removeWww.
 func NormalizeHost(host string) string { return removeWww(asciiLower(host)) }
 
 func asciiLower(s string) string {

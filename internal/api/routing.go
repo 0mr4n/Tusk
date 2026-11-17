@@ -181,7 +181,7 @@ func (s *Server) validRuleURL(ctx context.Context, raw string) (string, error) {
 		return "", errBody(http.StatusBadRequest, msgRuleURL)
 	}
 	u = addProtocol(u)
-	// Unlike link targets (Kutt accepts any scheme), rule URLs are web or store
+	// Unlike link targets (upstream accepts any scheme), rule URLs are web or store
 	// pages: the smart page navigates to them from script.
 	if lu := strings.ToLower(u); !strings.HasPrefix(lu, "http://") && !strings.HasPrefix(lu, "https://") {
 		return "", errBody(http.StatusBadRequest, msgRuleURL)
@@ -225,7 +225,7 @@ func nilIfEmpty(s string) *string {
 }
 
 // withRouting appends "routing" to a link object only when the link has it, so
-// links without routing stay byte-identical to Kutt (C5).
+// links without routing stay byte-identical to upstream (C5).
 func withRouting(o obj, r *domain.Routing) obj {
 	if r == nil {
 		return o
@@ -387,7 +387,7 @@ func (s *Server) linkRoutingStats(w http.ResponseWriter, r *http.Request) error 
 	st, err := s.st.Routing().RouteStats(r.Context(), l.ID, s.o.Now())
 	if err != nil {
 		s.log.Error("route stats", "err", err)
-		return kuttErr("Could not get the routing stats. Try again later.")
+		return serverErr("Could not get the routing stats. Try again later.")
 	}
 	writeJSON(w, http.StatusOK, obj{
 		{"lastDay", st.LastDay},

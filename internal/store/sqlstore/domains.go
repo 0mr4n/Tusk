@@ -102,7 +102,7 @@ func (ds *domainStore) List(ctx context.Context, f store.DomainFilter) ([]domain
 }
 
 // Add: domain.queries.js add:27-63. Address lower-cased; if it exists the row is updated
-// (homepage/user_id only when provided; banned reset to !!params.banned = false, as Kutt does),
+// (homepage/user_id only when provided; banned reset to !!params.banned = false, as upstream does),
 // otherwise inserted.
 func (ds *domainStore) Add(ctx context.Context, in store.UpsertDomain) (*domain.Domain, error) {
 	s := ds.s
@@ -177,7 +177,7 @@ func (ds *domainStore) Update(ctx context.Context, f store.DomainFilter, in stor
 	}
 	add("updated_at", s.ts(time.Now()))
 	// Re-select by primary key: a filter on user_id would miss rows after ClearUserID
-	// (Kutt re-selects with the same match; ids are the stable equivalent).
+	// (upstream re-selects with the same match; ids are the stable equivalent).
 	var out []domain.Domain
 	err := s.inTx(ctx, func(tx *sql.Tx) error {
 		ids, err := s.collectIDs(ctx, tx, "SELECT domains.id FROM domains"+whereSQL(w), wargs)

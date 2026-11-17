@@ -17,7 +17,7 @@ const CookieName = "token"
 // The strategy also reads body.apikey and query.apikey (strategy.js:71-73).
 const APIKeyHeader = "X-API-KEY"
 
-// Kutt error messages (auth.handler.js:84-95).
+// Upstream error messages (auth.handler.js:84-95).
 const (
 	MsgUnauthorized = "Unauthorized."
 	MsgBadAPIKey    = "API key is not correct."
@@ -133,7 +133,7 @@ func (s *Service) userFromJWT(ctx context.Context, r *http.Request) (*domain.Use
 	return u, claims, nil
 }
 
-// Authenticate runs Kutt's chain "auth.apikey then auth.jwt|jwtLoose" and
+// Authenticate runs upstream's chain "auth.apikey then auth.jwt|jwtLoose" and
 // returns the principal (nil if anonymous) or an *AppError.
 //
 //	strict=true  -> auth.jwt  : no user => 401 "Unauthorized."; unverified => 400.

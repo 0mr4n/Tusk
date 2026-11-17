@@ -1,5 +1,5 @@
-// Package mail ports Kutt's server/mail (nodemailer) to github.com/wneessen/go-mail.
-// The three HTML templates are Kutt's files verbatim (templates/); the
+// Package mail ports upstream's server/mail (nodemailer) to github.com/wneessen/go-mail.
+// The three HTML templates are upstream's files verbatim (templates/); the
 // placeholders {{domain}}, {{site_name}}, {{verification}}, {{resetpassword}}
 // are substituted exactly like mail.js (string replace, no escaping, since
 // values are config strings and server-generated UUID tokens).
@@ -23,7 +23,7 @@ import (
 //go:embed templates/*.html
 var fs embed.FS
 
-// Kutt text bodies (mail/text.js). NOTE: Kutt ships verifyMailText and
+// Upstream text bodies (mail/text.js). NOTE: upstream ships verifyMailText and
 // changeEmailText with their first sentences swapped (text.js:1-11); Tusk
 // uses the sentence that matches each mail's purpose.
 const (
@@ -51,7 +51,7 @@ type Sender interface {
 	Send(ctx context.Context, m Message) error
 }
 
-// Mailer sends Kutt's transactional mails.
+// Mailer sends upstream's transactional mails.
 type Mailer struct {
 	enabled     bool
 	from        string
@@ -141,7 +141,7 @@ func (m *Mailer) SendResetPassword(ctx context.Context, to, token string) error 
 		Text: r.Replace(m.fill(resetText)), HTML: r.Replace(m.resetHTML)})
 }
 
-// SendReport ports mail.sendReportEmail. Kutt puts the raw user-supplied link
+// SendReport ports mail.sendReportEmail. Upstream puts the raw user-supplied link
 // into the HTML part; Tusk HTML-escapes it (the text part is unchanged).
 func (m *Mailer) SendReport(ctx context.Context, link string) error {
 	return m.send(ctx, Message{To: m.reportEmail, Subject: "[REPORT]", Text: link, HTML: html.EscapeString(link)})

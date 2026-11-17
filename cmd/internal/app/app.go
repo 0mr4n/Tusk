@@ -75,7 +75,7 @@ func Run(ctx context.Context, cfg *config.Config, service string, log *slog.Logg
 		return fmt.Errorf("open db: %w", err)
 	}
 	defer st.Close()
-	if runAPI { // Kutt runs knex migrations on start (server.js); only API/all migrate.
+	if runAPI { // Upstream runs knex migrations on start (server.js); only API/all migrate.
 		if err := st.Migrate(ctx); err != nil {
 			return fmt.Errorf("migrate: %w", err)
 		}
@@ -235,7 +235,7 @@ func Run(ctx context.Context, cfg *config.Config, service string, log *slog.Logg
 }
 
 // homepage applies redirectCustomDomainHomepage (server.js:72) to everything
-// except static assets, which Kutt serves before that middleware (server.js:54-56).
+// except static assets, which upstream serves before that middleware (server.js:54-56).
 func homepage(rd *redirect.Handler, next http.Handler) http.Handler {
 	wrapped := rd.CustomDomainHomepage(next)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

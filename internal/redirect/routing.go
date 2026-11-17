@@ -166,7 +166,7 @@ type smartPage struct {
 // (iPadOS sends a macOS UA; only the page can check for touch).
 func (h *Handler) smartData(t *domain.RedirectTarget, c *choice) (*smartPage, bool) {
 	// The page navigates from script, so it only ever uses http(s) web URLs. A
-	// fallback target with another scheme (Kutt allows any) gets a plain 302.
+	// fallback target with another scheme (upstream allows any) gets a plain 302.
 	if !isWebURL(c.dest) {
 		return nil, false
 	}

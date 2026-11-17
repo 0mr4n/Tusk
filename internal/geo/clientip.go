@@ -23,7 +23,7 @@ var embeddedCloudflareRanges string
 
 // ClientIP extracts the trusted client IP from a request.
 //
-// Order (docs/srs/00-overview.md GEO-005, ARCHITECTURE §4):
+// Order (GEO-005, docs/ARCHITECTURE.md §4):
 //  1. GEO_TRUST_CLOUDFLARE_ONLY and the peer is a Cloudflare edge -> CF-Connecting-IP.
 //     With TRUST_PROXY the "peer" is the first untrusted hop: the right-most
 //     X-Forwarded-For entry appended by our own reverse proxy (Traefik) is checked

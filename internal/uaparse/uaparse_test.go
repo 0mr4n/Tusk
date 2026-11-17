@@ -14,7 +14,7 @@ type golden struct {
 }
 
 // testdata/ua_golden.json is produced by testdata/gen_ua_golden.js running the real
-// express-useragent 2.2.1 + isbot 5.1.19 + Kutt's bucket functions under Node 22
+// express-useragent 2.2.1 + isbot 5.1.19 + upstream's bucket functions under Node 22
 // over ~3.2k UAs (isbot fixtures, monperrus/crawler-user-agents, hand-written edge cases).
 func loadGolden(t testing.TB) []golden {
 	b, err := os.ReadFile("testdata/ua_golden.json")

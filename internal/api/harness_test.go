@@ -75,7 +75,7 @@ type env struct {
 
 func testConfig() *config.Config {
 	c, err := config.LoadFrom(func(k string) (string, bool) {
-		m := map[string]string{"DEFAULT_DOMAIN": "kutt.test", "JWT_SECRET": "test-secret", "NODE_ENV": "production",
+		m := map[string]string{"DEFAULT_DOMAIN": "tusk.test", "JWT_SECRET": "test-secret", "NODE_ENV": "production",
 			"DB_CLIENT": "better-sqlite3", "DISALLOW_ANONYMOUS_LINKS": "false"}
 		v, ok := m[k]
 		return v, ok
@@ -103,7 +103,7 @@ func newEnv(t testing.TB, mutate ...func(*config.Config)) *env {
 	res := &apitest.Resolver{S: st}
 	e := &env{t: t, cfg: cfg, st: st, res: res, mail: &fakeMailer{enabled: cfg.MailEnabled}, dns: map[string]string{}}
 	e.adminK, e.userK = "admin-api-key-000000000000000000000000000", "user-api-key-0000000000000000000000000000"
-	e.admin = st.SeedUser(domain.User{Email: "admin@kutt.test", Password: hash(t, "adminpass"), Role: domain.RoleAdmin, Verified: true, APIKey: &e.adminK})
+	e.admin = st.SeedUser(domain.User{Email: "admin@tusk.test", Password: hash(t, "adminpass"), Role: domain.RoleAdmin, Verified: true, APIKey: &e.adminK})
 	e.user = st.SeedUser(domain.User{Email: "user@example.com", Password: hash(t, "userpass1"), Role: domain.RoleUser, Verified: true, APIKey: &e.userK})
 	svc := auth.New(st.Users(), cfg.JWTSecret, auth.Mode{Prod: true})
 	svc.Tokens.SetClock(func() time.Time { return testNow })
@@ -153,7 +153,7 @@ func (e *env) do(method, path, auth string, body any) resp {
 		rd, ct = bytes.NewReader(j), "application/json"
 	}
 	req := httptest.NewRequest(method, path, rd)
-	req.Host = "kutt.test"
+	req.Host = "tusk.test"
 	req.RemoteAddr = "203.0.113.9:5555"
 	if ct != "" {
 		req.Header.Set("Content-Type", ct)

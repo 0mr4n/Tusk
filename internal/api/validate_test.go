@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-// Vectors produced by Kutt's own dependencies:
+// Vectors produced by upstream's own dependencies:
 //
 //	testdata/node_validators.json  <- node vvectors.js (validator 13, node:url, utils.urlRegex)
 //	../auth/testdata/node_vectors.json "ms"/"msLong" <- ms 2.1.3

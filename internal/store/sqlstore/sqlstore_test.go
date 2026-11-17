@@ -260,7 +260,7 @@ func TestLinks(t *testing.T) {
 			t.Fatal(err)
 		}
 		if _, err := ls.Create(ctx, store.CreateLink{Address: "abc", Target: "x"}); err != nil {
-			// no unique index on (address, domain_id) in Kutt: duplicates are prevented in handlers
+			// no unique index on (address, domain_id) in upstream: duplicates are prevented in handlers
 			t.Fatal(err)
 		}
 		// Expired sweep.
@@ -407,20 +407,20 @@ func TestStats(t *testing.T) {
 	})
 }
 
-// TestKuttCreatedSchema runs against databases created by Kutt's own knex migrations.
+// TestUpstreamCreatedSchema runs against databases created by upstream's own knex migrations.
 //
-//	TUSK_TEST_KUTT_SQLITE=/path/kutt.sqlite (copied before use)
-//	TUSK_TEST_KUTT_PG_DSN / TUSK_TEST_KUTT_MYSQL_DSN
-func TestKuttCreatedSchema(t *testing.T) {
+//	TUSK_TEST_UPSTREAM_SQLITE=/path/upstream.sqlite (copied before use)
+//	TUSK_TEST_UPSTREAM_PG_DSN / TUSK_TEST_UPSTREAM_MYSQL_DSN
+func TestUpstreamCreatedSchema(t *testing.T) {
 	ctx := context.Background()
 	var ts []target
-	if src := os.Getenv("TUSK_TEST_KUTT_SQLITE"); src != "" {
+	if src := os.Getenv("TUSK_TEST_UPSTREAM_SQLITE"); src != "" {
 		ts = append(ts, target{"sqlite", func(t *testing.T) *DB {
 			b, err := os.ReadFile(src)
 			if err != nil {
 				t.Fatal(err)
 			}
-			dst := filepath.Join(t.TempDir(), "kutt.sqlite")
+			dst := filepath.Join(t.TempDir(), "upstream.sqlite")
 			os.WriteFile(dst, b, 0o600)
 			db, err := OpenDSN(ctx, "sqlite", dst, 1, 4)
 			if err != nil {
@@ -429,7 +429,7 @@ func TestKuttCreatedSchema(t *testing.T) {
 			return db
 		}})
 	}
-	for kind, env := range map[string]string{"postgres": "TUSK_TEST_KUTT_PG_DSN", "mysql": "TUSK_TEST_KUTT_MYSQL_DSN"} {
+	for kind, env := range map[string]string{"postgres": "TUSK_TEST_UPSTREAM_PG_DSN", "mysql": "TUSK_TEST_UPSTREAM_MYSQL_DSN"} {
 		if dsn := os.Getenv(env); dsn != "" {
 			ts = append(ts, target{kind, func(t *testing.T) *DB {
 				db, err := OpenDSN(ctx, kind, dsn, 1, 4)
@@ -444,17 +444,17 @@ func TestKuttCreatedSchema(t *testing.T) {
 		}
 	}
 	if len(ts) == 0 {
-		t.Skip("no Kutt-created databases configured")
+		t.Skip("no upstream-created databases configured")
 	}
 	for _, tg := range ts {
 		t.Run(tg.name, func(t *testing.T) {
 			db := tg.open(t)
 			defer db.Close()
 			if err := db.Migrate(ctx); err != nil {
-				t.Fatal("Migrate must accept a Kutt-migrated DB:", err)
+				t.Fatal("Migrate must accept a knex-migrated DB:", err)
 			}
 			u := mkUser(t, db, fmt.Sprintf("k%d@x.com", time.Now().UnixNano()))
-			d, err := db.Domains().Add(ctx, store.UpsertDomain{Address: "kutt.example", UserID: &u.ID})
+			d, err := db.Domains().Add(ctx, store.UpsertDomain{Address: "upstream.example", UserID: &u.ID})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -479,12 +479,12 @@ func TestKuttCreatedSchema(t *testing.T) {
 	}
 }
 
-// TestSchemaMatchesKutt compares Tusk's generated sqlite schema against a Kutt-generated one
+// TestSchemaMatchesUpstream compares Tusk's generated sqlite schema against an upstream-generated one
 // (column names, types, nullability, defaults — ignoring the uuid default text and indexes).
-func TestSchemaMatchesKutt(t *testing.T) {
-	src := os.Getenv("TUSK_TEST_KUTT_SQLITE")
+func TestSchemaMatchesUpstream(t *testing.T) {
+	src := os.Getenv("TUSK_TEST_UPSTREAM_SQLITE")
 	if src == "" {
-		t.Skip("TUSK_TEST_KUTT_SQLITE not set")
+		t.Skip("TUSK_TEST_UPSTREAM_SQLITE not set")
 	}
 	ctx := context.Background()
 	mine, _ := OpenDSN(ctx, "sqlite", filepath.Join(t.TempDir(), "m.sqlite"), 1, 1)
@@ -500,11 +500,11 @@ func TestSchemaMatchesKutt(t *testing.T) {
 	for _, tb := range []string{"users", "domains", "hosts", "links", "visits", "ips", "knex_migrations"} {
 		a, b := cols(t, mine.db, tb), cols(t, ref, tb)
 		if a != b {
-			t.Errorf("table %s differs:\n tusk: %s\n kutt: %s", tb, a, b)
+			t.Errorf("table %s differs:\n tusk: %s\n upstream: %s", tb, a, b)
 		}
 	}
 	idx := func(db *sql.DB) string {
-		// tusk_* indexes belong to Tusk's additive tables, which Kutt doesn't have.
+		// tusk_* indexes belong to Tusk's additive tables, which upstream doesn't have.
 		rows, _ := db.Query("SELECT name FROM sqlite_master WHERE type='index' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE 'tusk_%' ORDER BY name")
 		defer rows.Close()
 		var out []string
@@ -516,7 +516,7 @@ func TestSchemaMatchesKutt(t *testing.T) {
 		return strings.Join(out, ",")
 	}
 	if a, b := idx(mine.db), idx(ref); a != b {
-		t.Errorf("indexes differ:\n tusk: %s\n kutt: %s", a, b)
+		t.Errorf("indexes differ:\n tusk: %s\n upstream: %s", a, b)
 	}
 }
 

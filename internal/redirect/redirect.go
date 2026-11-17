@@ -1,4 +1,4 @@
-// Package redirect is the Tusk hot path: GET /{id} (Kutt links.handler.js
+// Package redirect is the Tusk hot path: GET /{id} (upstream links.handler.js
 // redirect, lines 459-545), the custom-domain homepage redirect
 // (redirectCustomDomainHomepage, 587-608), the password-protected unlock
 // endpoint (redirectProtected, 547-585) and the server-rendered protected,
@@ -54,7 +54,7 @@ type Options struct {
 	Now      func() time.Time
 
 	// Platform routing (docs/UNIVERSAL-LINKS.md). RoutingEnabled = ROUTING_ENABLED;
-	// off means routed links behave exactly like plain Kutt links.
+	// off means routed links behave exactly like plain upstream links.
 	RoutingEnabled bool
 	SmartTimeout   time.Duration // ROUTING_SMART_TIMEOUT
 	Apps           AppsSource    // nil: no app association files (404)
@@ -144,7 +144,7 @@ func (h *Handler) lookup(result string) {
 }
 
 // resolveDomain returns the custom domain for the Host header (nil for the
-// default domain or an unknown host, exactly like Kutt's query.domain.find).
+// default domain or an unknown host, exactly like upstream's query.domain.find).
 func (h *Handler) resolveDomain(ctx context.Context, rawHost string) (*domain.Domain, error) {
 	host := RemoveWww(rawHost)
 	if host == h.o.DefaultDomain || h.o.Domains == nil {
@@ -186,7 +186,7 @@ func (h *Handler) CustomDomainHomepage(next http.Handler) http.Handler {
 // ServeRedirect is GET /{id}.
 func (h *Handler) ServeRedirect(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
-	// Kutt: req.path.replace("/", "") in preservedURLs -> next() -> 404 page.
+	// Upstream: req.path.replace("/", "") in preservedURLs -> next() -> 404 page.
 	if IsPreserved(id) {
 		h.ServeNotFound(w, r)
 		return
@@ -219,7 +219,7 @@ func (h *Handler) ServeRedirect(w http.ResponseWriter, r *http.Request) {
 		h.lookup("hit")
 	}
 	// Expired but not yet swept (the sweeper runs every 30s, cron.js): behave
-	// as if already deleted. Kutt itself does not check expiry here.
+	// as if already deleted. Upstream itself does not check expiry here.
 	if t != nil && t.ExpireIn != nil && !t.ExpireIn.After(h.o.Now()) {
 		t = nil
 		h.count("expired")

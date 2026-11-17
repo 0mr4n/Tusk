@@ -22,7 +22,7 @@ import { cn } from "@/lib/utils"
 type Dialog = "qr" | "edit" | "delete" | "ban" | null
 
 /**
- * Per-link actions (Kutt partials/links/actions.hbs): stats, QR, copy, edit, ban (admin), delete.
+ * Per-link actions (upstream partials/links/actions.hbs): stats, QR, copy, edit, ban (admin), delete.
  * Compact icon buttons on wide screens; a dropdown on narrow ones.
  */
 export function LinkActions({

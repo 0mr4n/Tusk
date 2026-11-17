@@ -14,15 +14,15 @@
 
 x-tusk-env: &tusk-env
   NODE_ENV: production
-  SITE_NAME: ${SITE_NAME:-Kutt}
+  SITE_NAME: ${SITE_NAME:-Tusk}
   DEFAULT_DOMAIN: ${DEFAULT_DOMAIN:?set DEFAULT_DOMAIN}
-  JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET (same value as the old Kutt install)}
+  JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET}
   TRUST_PROXY: "true"
   DB_CLIENT: pg
   DB_HOST: postgres
   DB_PORT: 5432
-  DB_NAME: ${DB_NAME:-kutt}
-  DB_USER: ${DB_USER:-kutt}
+  DB_NAME: ${DB_NAME:-tusk}
+  DB_USER: ${DB_USER:-tusk}
   DB_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD}
   DB_POOL_MAX: ${DB_POOL_MAX:-20}
   REDIS_ENABLED: "true"
@@ -63,7 +63,7 @@ services:
       - --providers.docker.network=tusk_edge
       - --entrypoints.web.address=:80
       # No global HTTP→HTTPS redirect: custom domains may be served over plain HTTP
-      # (Kutt default CUSTOM_DOMAIN_USE_HTTPS=false). The main domain redirects per router.
+      # (default CUSTOM_DOMAIN_USE_HTTPS=false). The main domain redirects per router.
       - --entrypoints.web.forwardedHeaders.trustedIPs=${CLOUDFLARE_IPS}
       - --entrypoints.websecure.address=:443
       # Only trust X-Forwarded-* from Cloudflare edges (keep in sync with https://www.cloudflare.com/ips/).
@@ -134,9 +134,9 @@ services:
       <<: *tusk-env
       SERVICE_ROLES: api
       PORT: 3000
-      TUSK_CUSTOM_DIR: /kutt/custom
+      TUSK_CUSTOM_DIR: /tusk/custom
     volumes:
-      - custom:/kutt/custom:ro
+      - custom:/tusk/custom:ro
     networks: [internal, edge]
     deploy:
       replicas: ${API_REPLICAS:-2}
@@ -206,8 +206,8 @@ services:
       - -c
       - synchronous_commit=off   # visit counters tolerate losing <1s on crash; links are also cached
     environment:
-      POSTGRES_DB: ${DB_NAME:-kutt}
-      POSTGRES_USER: ${DB_USER:-kutt}
+      POSTGRES_DB: ${DB_NAME:-tusk}
+      POSTGRES_USER: ${DB_USER:-tusk}
       POSTGRES_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD}
     volumes:
       - db_data_pg:/var/lib/postgresql/data

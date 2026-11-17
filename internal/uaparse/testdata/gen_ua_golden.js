@@ -1,10 +1,10 @@
-// Generates testdata/ua_golden.json from the REAL Kutt dependencies.
-// Run inside the kutt-copy dir: node gen_ua_golden.js uas.txt > ua_golden.json
+// Generates testdata/ua_golden.json from the real upstream dependencies.
+// Run inside an upstream checkout: node gen_ua_golden.js uas.txt > ua_golden.json
 const fs = require("fs");
 const useragent = require("express-useragent").default;
 const { isbot } = require("isbot");
 
-// Copied verbatim from kutt server/utils/utils.js:360-394
+// Copied verbatim from upstream server/utils/utils.js:360-394
 function getUseragentBrowser(agent) {
   if (agent.isIE) return "ie";
   else if (agent.isFirefox) return "firefox";

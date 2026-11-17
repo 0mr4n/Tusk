@@ -8,11 +8,11 @@ import (
 	"time"
 )
 
-// LastKnexMigration is the newest Kutt v3.2.6 migration (server/migrations).
+// LastKnexMigration is the newest upstream v3.2.6 migration (server/migrations).
 const LastKnexMigration = "20250106070444_remove_cooldown.js"
 
-// KnexMigrations lists all Kutt migrations in order; written into knex_migrations on a
-// fresh DB so `knex migrate:latest` (Node Kutt) sees an up-to-date schema.
+// KnexMigrations lists all upstream migrations in order; written into knex_migrations on a
+// fresh DB so `knex migrate:latest` (the Node.js original) sees an up-to-date schema.
 var KnexMigrations = []string{
 	"20200211220920_constraints.js",
 	"20200510140704_domains.js",
@@ -26,17 +26,17 @@ var KnexMigrations = []string{
 	LastKnexMigration,
 }
 
-// ErrSchemaTooOld is returned when an existing Kutt DB lacks the latest knex migration.
-var ErrSchemaTooOld = errors.New("sqlstore: Kutt database is not fully migrated: run Kutt v3.2.6 (`npm run migrate`) first; knex_migrations lacks " + LastKnexMigration)
+// ErrSchemaTooOld is returned when an existing upstream DB lacks the latest knex migration.
+var ErrSchemaTooOld = errors.New("sqlstore: database is not fully migrated: knex_migrations lacks " + LastKnexMigration)
 
 // Migrate verifies or creates the schema (store.Store.Migrate).
 //
-//   - knex_migrations exists: require LastKnexMigration, never alter Kutt's tables (C1).
+//   - knex_migrations exists: require LastKnexMigration, never alter upstream's tables (C1).
 //   - Either way, then apply pending Tusk-only tusk_* migrations (tusk_migrate.go).
-//   - Empty DB: create the final Kutt schema exactly as knex 3.1 emits it after all 10
+//   - Empty DB: create the final upstream schema exactly as knex 3.1 emits it after all 10
 //     migrations (DDL captured from `knex migrate:latest` on each dialect), plus
 //     knex_migrations / knex_migrations_lock rows.
-//   - Kutt tables without knex_migrations: refuse (unknown state).
+//   - upstream tables without knex_migrations: refuse (unknown state).
 func (s *DB) Migrate(ctx context.Context) error {
 	conn, err := s.db.Conn(ctx)
 	if err != nil {
@@ -150,7 +150,7 @@ func (s *DB) createSchema(ctx context.Context, conn *sql.Conn) error {
 	return tx.Commit()
 }
 
-// ---- DDL: captured from knex 3.1.0 `migrate:latest` of Kutt v3.2.6 on each dialect ----
+// ---- DDL: captured from knex 3.1.0 `migrate:latest` of upstream v3.2.6 on each dialect ----
 
 var sqliteSchema = []string{
 	"CREATE TABLE `knex_migrations` (`id` integer not null primary key autoincrement, `name` varchar(255), `batch` integer, `migration_time` datetime)",

@@ -126,7 +126,7 @@ func setup(t testing.TB) (*Handler, *fakePub, *http.ServeMux) {
 	}
 	pub := &fakePub{}
 	h := New(Options{
-		DefaultDomain: "kutt.test",
+		DefaultDomain: "tusk.test",
 		Links:         links,
 		Domains:       doms,
 		Finder:        finder,
@@ -171,28 +171,28 @@ func TestRedirectSemantics(t *testing.T) {
 		location         string
 		bodyHas          string
 	}{
-		{"plain 302", "kutt.test", "/abc", nil, 302, "https://example.com/path?q=1", ""},
-		{"www stripped", "www.kutt.test", "/abc", nil, 302, "https://example.com/path?q=1", ""},
-		{"unknown -> /404", "kutt.test", "/nope", nil, 302, "/404", ""},
-		{"banned -> /banned", "kutt.test", "/bad", nil, 302, "/banned", ""},
-		{"expired -> /404", "kutt.test", "/old", nil, 302, "/404", ""},
-		{"not yet expired", "kutt.test", "/fresh", nil, 302, "https://fresh.example/", ""},
-		{"protected page", "kutt.test", "/pw", map[string]string{"Accept": "text/html"}, 200, "", uuidProtected},
-		{"protected basic ok", "kutt.test", "/pw", map[string]string{"Authorization": "Basic " + base64.StdEncoding.EncodeToString([]byte("x:secret"))}, 302, "https://secret.example/", ""},
-		{"protected basic bad", "kutt.test", "/pw", map[string]string{"Authorization": "Basic " + base64.StdEncoding.EncodeToString([]byte("x:nope"))}, 200, "", "Protected link"},
-		{"info json", "kutt.test", "/abc+", nil, 200, "", `{"target":"https://example.com/path?q=1"}`},
-		{"info html", "kutt.test", "/abc+", map[string]string{"Accept": "text/html"}, 200, "", "kutt.test/abc"},
-		{"info on protected -> page", "kutt.test", "/pw+", nil, 200, "", "Protected link"},
-		{"preserved -> 404 page", "kutt.test", "/login", nil, 404, "", "404"},
-		{"unicode encoded", "kutt.test", "/uni", nil, 302, "https://example.com/%C3%BC%20path", ""},
+		{"plain 302", "tusk.test", "/abc", nil, 302, "https://example.com/path?q=1", ""},
+		{"www stripped", "www.tusk.test", "/abc", nil, 302, "https://example.com/path?q=1", ""},
+		{"unknown -> /404", "tusk.test", "/nope", nil, 302, "/404", ""},
+		{"banned -> /banned", "tusk.test", "/bad", nil, 302, "/banned", ""},
+		{"expired -> /404", "tusk.test", "/old", nil, 302, "/404", ""},
+		{"not yet expired", "tusk.test", "/fresh", nil, 302, "https://fresh.example/", ""},
+		{"protected page", "tusk.test", "/pw", map[string]string{"Accept": "text/html"}, 200, "", uuidProtected},
+		{"protected basic ok", "tusk.test", "/pw", map[string]string{"Authorization": "Basic " + base64.StdEncoding.EncodeToString([]byte("x:secret"))}, 302, "https://secret.example/", ""},
+		{"protected basic bad", "tusk.test", "/pw", map[string]string{"Authorization": "Basic " + base64.StdEncoding.EncodeToString([]byte("x:nope"))}, 200, "", "Protected link"},
+		{"info json", "tusk.test", "/abc+", nil, 200, "", `{"target":"https://example.com/path?q=1"}`},
+		{"info html", "tusk.test", "/abc+", map[string]string{"Accept": "text/html"}, 200, "", "tusk.test/abc"},
+		{"info on protected -> page", "tusk.test", "/pw+", nil, 200, "", "Protected link"},
+		{"preserved -> 404 page", "tusk.test", "/login", nil, 404, "", "404"},
+		{"unicode encoded", "tusk.test", "/uni", nil, 302, "https://example.com/%C3%BC%20path", ""},
 		{"custom domain link", "go.custom.io", "/abc", nil, 302, "https://custom-target.example/", ""},
 		{"custom domain miss -> homepage", "go.custom.io", "/zzz", nil, 302, "https://custom.io/", ""},
 		{"custom domain root -> homepage", "go.custom.io", "/", nil, 302, "https://custom.io/", ""},
 		{"custom domain preserved -> homepage", "go.custom.io", "/login", nil, 302, "https://custom.io/", ""},
 		{"custom domain w/o homepage miss", "bare.custom.io", "/zzz", nil, 302, "/404", ""},
 		{"unknown host treated as default-less", "other.io", "/abc", nil, 302, "https://example.com/path?q=1", ""},
-		{"GET /404 page", "kutt.test", "/404", nil, 404, "", "Link could not be found"},
-		{"GET /banned page", "kutt.test", "/banned", nil, 200, "", "banned"},
+		{"GET /404 page", "tusk.test", "/404", nil, 404, "", "Link could not be found"},
+		{"GET /banned page", "tusk.test", "/banned", nil, 200, "", "banned"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -212,7 +212,7 @@ func TestRedirectSemantics(t *testing.T) {
 }
 
 func TestUnknownHostIsNotCustomDomain(t *testing.T) {
-	// Kutt: domain = query.domain.find({address: host}) -> undefined -> domain_id null.
+	// Upstream: domain = query.domain.find({address: host}) -> undefined -> domain_id null.
 	_, _, mux := setup(t)
 	rr := do(t, mux, "GET", "unknown.example", "/abc", nil, "")
 	if rr.Code != 302 || rr.Header().Get("Location") != "https://example.com/path?q=1" {
@@ -223,21 +223,21 @@ func TestUnknownHostIsNotCustomDomain(t *testing.T) {
 func TestVisitPublishing(t *testing.T) {
 	_, pub, mux := setup(t)
 	// bot: no event
-	do(t, mux, "GET", "kutt.test", "/abc", map[string]string{"User-Agent": "Googlebot/2.1"}, "")
+	do(t, mux, "GET", "tusk.test", "/abc", map[string]string{"User-Agent": "Googlebot/2.1"}, "")
 	// anonymous link: no event
-	do(t, mux, "GET", "kutt.test", "/anon", map[string]string{"User-Agent": firefoxUA}, "")
+	do(t, mux, "GET", "tusk.test", "/anon", map[string]string{"User-Agent": firefoxUA}, "")
 	// banned / protected / missing: no event
-	do(t, mux, "GET", "kutt.test", "/bad", map[string]string{"User-Agent": firefoxUA}, "")
-	do(t, mux, "GET", "kutt.test", "/pw", map[string]string{"User-Agent": firefoxUA}, "")
-	do(t, mux, "GET", "kutt.test", "/abc+", map[string]string{"User-Agent": firefoxUA}, "")
+	do(t, mux, "GET", "tusk.test", "/bad", map[string]string{"User-Agent": firefoxUA}, "")
+	do(t, mux, "GET", "tusk.test", "/pw", map[string]string{"User-Agent": firefoxUA}, "")
+	do(t, mux, "GET", "tusk.test", "/abc+", map[string]string{"User-Agent": firefoxUA}, "")
 	if len(pub.evs) != 0 {
 		t.Fatalf("unexpected events: %+v", pub.evs)
 	}
 	// human on owned link: one event with parsed fields
-	do(t, mux, "GET", "kutt.test", "/abc", map[string]string{
+	do(t, mux, "GET", "tusk.test", "/abc", map[string]string{
 		"User-Agent": firefoxUA, "Referer": "https://www.News.example.com:8443/a?b", "CF-IPCountry": "DE",
 	}, "")
-	do(t, mux, "GET", "kutt.test", "/abc", map[string]string{"User-Agent": firefoxUA, "X-Forwarded-For": "8.8.8.8, 10.0.0.1"}, "")
+	do(t, mux, "GET", "tusk.test", "/abc", map[string]string{"User-Agent": firefoxUA, "X-Forwarded-For": "8.8.8.8, 10.0.0.1"}, "")
 	if len(pub.evs) != 2 {
 		t.Fatalf("want 2 events, got %d", len(pub.evs))
 	}
@@ -273,7 +273,7 @@ func TestProtectedEndpoint(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			rr := do(t, mux, "POST", "kutt.test", c.path, c.hdr, c.body)
+			rr := do(t, mux, "POST", "tusk.test", c.path, c.hdr, c.body)
 			if rr.Code != c.status {
 				t.Fatalf("status %d want %d: %s", rr.Code, c.status, rr.Body.String())
 			}
@@ -340,7 +340,7 @@ func TestHelpers(t *testing.T) {
 
 func TestInfoJSONShape(t *testing.T) {
 	_, _, mux := setup(t)
-	rr := do(t, mux, "GET", "kutt.test", "/abc+", map[string]string{"Accept": "application/json"}, "")
+	rr := do(t, mux, "GET", "tusk.test", "/abc+", map[string]string{"Accept": "application/json"}, "")
 	var m map[string]any
 	if err := json.Unmarshal(rr.Body.Bytes(), &m); err != nil || len(m) != 1 {
 		t.Fatalf("%v %v", err, m)
@@ -355,7 +355,7 @@ func BenchmarkRedirectHit(b *testing.B) {
 	h.o.Publisher = discardPub{}
 	_ = pub
 	req := httptest.NewRequest("GET", "/abc", nil)
-	req.Host = "kutt.test"
+	req.Host = "tusk.test"
 	req.Header.Set("User-Agent", firefoxUA)
 	req.SetPathValue("id", "abc")
 	w := &nopWriter{h: http.Header{}}
@@ -372,7 +372,7 @@ func BenchmarkRedirectHitBot(b *testing.B) {
 	h, _, _ := setup(b)
 	h.o.Metrics = nil
 	req := httptest.NewRequest("GET", "/abc", nil)
-	req.Host = "kutt.test"
+	req.Host = "tusk.test"
 	req.Header.Set("User-Agent", "Googlebot")
 	req.SetPathValue("id", "abc")
 	w := &nopWriter{h: http.Header{}}

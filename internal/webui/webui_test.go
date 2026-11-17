@@ -15,7 +15,7 @@ import (
 	"github.com/0mr4n/Tusk/internal/config"
 )
 
-const testIndex = `<!doctype html><html><head><title>Kutt</title><!--tusk:custom-css--></head><body><div id="root"></div></body></html>`
+const testIndex = `<!doctype html><html><head><title>Tusk</title><!--tusk:custom-css--></head><body><div id="root"></div></body></html>`
 
 var bigJS = strings.Repeat("console.log('tusk');\n", 200)
 
@@ -89,7 +89,7 @@ func TestCustomOverridesEmbedded(t *testing.T) {
 		t.Fatalf("custom-only image: %d %q", rec.Code, rec.Body.String())
 	}
 
-	// Kutt's express.static("custom/css", {extensions: ["css"]}): /css/theme → theme.css
+	// Upstream's express.static("custom/css", {extensions: ["css"]}): /css/theme → theme.css
 	for _, p := range []string{"/css/theme.css", "/css/theme"} {
 		rec := get(h, p, nil)
 		if rec.Code != 200 || !strings.Contains(rec.Body.String(), "crimson") {
@@ -126,7 +126,7 @@ func TestIndexInjection(t *testing.T) {
 	if !strings.Contains(body, "<title>Shorty</title>") {
 		t.Errorf("site name not injected: %s", body)
 	}
-	// sorted, both custom stylesheets linked (Kutt custom_styles)
+	// sorted, both custom stylesheets linked (upstream custom_styles)
 	want := `<link rel="stylesheet" href="/css/b.css"><link rel="stylesheet" href="/css/theme.css">`
 	if !strings.Contains(body, want) {
 		t.Errorf("custom css links missing: %s", body)
@@ -266,7 +266,7 @@ func TestPlaceholderWithoutBuild(t *testing.T) {
 
 // TestEmbeddedHandler exercises the real embed.FS (placeholder or real build).
 func TestEmbeddedHandler(t *testing.T) {
-	h := Handler(&config.Config{SiteName: "Kutt"})
+	h := Handler(&config.Config{SiteName: "Shorty"})
 	rec := get(h, "/", nil)
 	if rec.Code != 200 || !strings.Contains(rec.Header().Get("Content-Type"), "text/html") {
 		t.Fatalf("embedded index: %d %q", rec.Code, rec.Header().Get("Content-Type"))

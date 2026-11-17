@@ -29,7 +29,7 @@ Rules for all modes:
 
 ## 2. Compatibility constraints this design respects
 
-- **C1 / C6 (no Kutt schema changes):** every new piece of data is in **additive `tusk_*` tables** with their own migration ledger. Kutt's tables, rows and `knex_migrations` stay untouched. Node Kutt can still run on the same database. It ignores routing and redirects to `target`.
+- **C1 / C6 (no upstream schema changes):** every new piece of data is in **additive `tusk_*` tables** with their own migration ledger. Upstream's tables, rows and `knex_migrations` stay untouched. The Node.js original can still run on the same database. It ignores routing and redirects to `target`.
 - **C5 (API shapes):** a link that has no routing serialises **byte-identically** to today. The `routing` key appears only when the link has routing configured.
 - **C7 (cache):** `RedirectTarget` gains an `omitempty` field under Tusk's own Redis key prefix. Old cache entries decode as "no routing".
 - **Hot path:** a link without routing gets one nil check and no extra allocation. Routing data travels inside the cached `RedirectTarget`, so it adds no extra cache or DB round trip.
@@ -37,7 +37,7 @@ Rules for all modes:
 ## 3. Data model (new tables, all three dialects)
 
 The migration ledger is `tusk_migrations(name PK, applied_at)`. `sqlstore.Migrate` first runs the
-existing Kutt check, then applies the pending Tusk migrations while holding the **same** advisory
+existing upstream check, then applies the pending Tusk migrations while holding the **same** advisory
 lock.
 
 ```
@@ -63,7 +63,7 @@ tusk_domain_apps                    -- app association, per domain
   paths           text              -- AASA components / path prefix; default "/*" minus preserved routes
   updated_at
 
-tusk_route_visits                   -- stats, one row per (link, hour), like Kutt's visits
+tusk_route_visits                   -- stats, one row per (link, hour), like upstream's visits
   id PK, link_id FK CASCADE, user_id NULL, hour timestamp, total int
   routes   json                     -- {"ios":n,"android":n,"desktop":n,"fallback":n}
   os       json                     -- {"ios","ipados","android","windows","macos","linux","chromeos","other"}
@@ -75,7 +75,7 @@ tusk_route_visits                   -- stats, one row per (link, hour), like Kut
 stays **one indexed query** (`links LEFT JOIN tusk_link_routing`), and the API still validates the
 JSON against a fixed schema. Each rule has its own `enabled` flag.
 
-**Cleaning up orphans:** SQLite runs without `PRAGMA foreign_keys`, and Kutt can delete links
+**Cleaning up orphans:** SQLite runs without `PRAGMA foreign_keys`, and upstream can delete links
 itself, so cascades are not enough. `LinkStore.Remove` and `RemoveExpired` therefore delete the
 `tusk_*` rows explicitly, and the worker's sweeper also deletes orphaned `tusk_*` rows at a slow
 interval.
@@ -83,7 +83,7 @@ interval.
 ## 4. Redirect hot path changes (`internal/redirect`, `internal/uaparse`, `internal/cache`)
 
 1. `domain.RedirectTarget` gets `Routing *Routing \`json:"routing,omitempty"\``. It is filled by `sqlstore.Resolve` through the LEFT JOIN, and only when a routing row exists and `enabled` is true.
-2. A new function `uaparse.Platform(ua) PlatformInfo{Route, OS, Device, InApp}` uses no regexp and makes no allocations, like the existing parser. It is **separate** from Kutt's `Browser`/`OS` buckets, which have to keep matching Kutt exactly for C6.
+2. A new function `uaparse.Platform(ua) PlatformInfo{Route, OS, Device, InApp}` uses no regexp and makes no allocations, like the existing parser. It is **separate** from upstream's `Browser`/`OS` buckets, which have to keep matching upstream exactly for C6.
 3. In `ServeRedirect`, after the banned, expired and protected checks:
    `if cfg.RoutingEnabled && t.Routing != nil && !isBot` → classify → choose the rule (if the rule is missing or disabled, use the fallback) → dispatch by mode:
    - `redirect` / `deeplink`: `redirect302(rule.URL)`. A `deeplink` Android rule that has `app_url` gets an `intent://…;S.browser_fallback_url=…;end`.
@@ -113,8 +113,8 @@ interval.
 ## 7. Statistics
 
 - `VisitEvent` moves to **`V: 2`** with new optional fields `route`, `pos` (platform OS) and `device`. A v1 worker ignores the unknown JSON fields, and a v2 worker treats v1 events as unrouted, so rolling deploys are safe.
-- `worker.Fold` produces a second kind of delta, `RouteDelta` per (link, hour), **only for events that went through routing**. `VisitStore.ApplyRouteDeltas` upserts `tusk_route_visits` using the same per-delta transaction pattern as Kutt's buckets. The existing `visits` rows and `links.visit_count` are written exactly as they are today.
-- `GET /links/{id}/routing/stats` uses the shape of Kutt's stats (`lastDay`, `lastWeek`, `lastMonth`, `allTime`, each with `views[]`). Each period also has `routes[]`, `os[]` and `device[]` as `{name, value}`, and the result goes through the existing `statsCache`.
+- `worker.Fold` produces a second kind of delta, `RouteDelta` per (link, hour), **only for events that went through routing**. `VisitStore.ApplyRouteDeltas` upserts `tusk_route_visits` using the same per-delta transaction pattern as upstream's buckets. The existing `visits` rows and `links.visit_count` are written exactly as they are today.
+- `GET /links/{id}/routing/stats` uses the shape of upstream's stats (`lastDay`, `lastWeek`, `lastMonth`, `allTime`, each with `views[]`). Each period also has `routes[]`, `os[]` and `device[]` as `{name, value}`, and the result goes through the existing `statsCache`.
 
 ## 8. API v2 additions (documented in `docs/API-EXTENSIONS.md`)
 
@@ -148,7 +148,7 @@ length, banned-host check). `app_url` accepts custom schemes but rejects `javasc
 | `GET` / `PUT` / `DELETE /domains/{id}/apps` | owner / admin | App association; `{id}` = `default` for DEFAULT_DOMAIN (admin only). |
 | `GET /config` | none | Adds `routing_enabled`, `routing_smart_timeout_ms`. |
 
-Errors use Kutt's `{error}` with status 400 or 403. A mode the user isn't allowed to use returns 403 `{error:"Routing mode not allowed."}`.
+Errors use upstream's `{error}` with status 400 or 403. A mode the user isn't allowed to use returns 403 `{error:"Routing mode not allowed."}`.
 
 ## 9. Web UI (`web/`)
 
@@ -162,8 +162,8 @@ Errors use Kutt's `{error}` with status 400 or 403. A mode the user isn't allowe
 
 Each phase can ship on its own and is gated by `make test`.
 
-1. **Foundations:** the `tusk_migrations` ledger and the 4 tables (pg/mysql/sqlite DDL + tests on all three); `uaparse.Platform` with a UA corpus test (`testdata/`), including in-app browsers and iPadOS; domain types and config vars; record contract changes in `docs/CONTRACTS.md`.
-2. **`redirect` mode end to end:** Resolve JOIN → cache → hot path; API inline field + `/links/{id}/routing`; validation; instance switch, per-user `allowed_modes`, per-rule flags; benchmarks; Kutt-compat test (a link without routing gives byte-identical JSON, and a Kutt schema plus `tusk_*` tables still passes `Migrate`).
+1. **Foundations:** the `tusk_migrations` ledger and the 4 tables (pg/mysql/sqlite DDL + tests on all three); `uaparse.Platform` with a UA corpus test (`testdata/`), including in-app browsers and iPadOS; domain types and config vars.
+2. **`redirect` mode end to end:** Resolve JOIN → cache → hot path; API inline field + `/links/{id}/routing`; validation; instance switch, per-user `allowed_modes`, per-rule flags; benchmarks; upstream-compat test (a link without routing gives byte-identical JSON, and an upstream schema plus `tusk_*` tables still passes `Migrate`).
 3. **Statistics:** event v2, worker fold, `ApplyRouteDeltas`, stats endpoint, UI Platforms tab.
 4. **`deeplink` mode:** `tusk_domain_apps`, `/.well-known/*` on the redirector, `intent://` building, domain settings UI.
 5. **`smart` mode:** interstitial template (CSP, no-JS fallback, iPadOS and in-app handling), timeout config.
@@ -178,10 +178,10 @@ Each phase can ship on its own and is gated by `make test`.
 ## 12. Implementation notes (deviations from the draft)
 
 - **Route stats use fixed counter columns** (`r_*`, `os_*`, `dev_*`) instead of JSON maps, so the worker upserts with atomic increments (`ON CONFLICT … DO UPDATE` / `ON DUPLICATE KEY UPDATE`) and no read-modify-write. Adding a platform later needs a small `tusk_*` migration.
-- **Rule URLs must be http(s)**, stricter than link targets (Kutt accepts any scheme). The smart page navigates from script, so it is also never rendered when the fallback target is not http(s); those visitors get a plain 302.
+- **Rule URLs must be http(s)**, stricter than link targets (upstream accepts any scheme). The smart page navigates from script, so it is also never rendered when the fallback target is not http(s); those visitors get a plain 302.
 - **Admins always have every mode.** `ROUTING_DEFAULT_MODES=none` makes routing opt-in per user.
-- **Rollout safety:** only the api role migrates. A redirector or worker that starts first keeps using the original Kutt query and re-probes for the `tusk_*` tables every 15 s.
-- **Orphans** (rows left when Node Kutt deletes a link, user or domain) are removed by the worker every hour.
+- **Rollout safety:** only the api role migrates. A redirector or worker that starts first keeps using the original query and re-probes for the `tusk_*` tables every 15 s.
+- **Orphans** (rows left when the Node.js original deletes a link, user or domain) are removed by the worker every hour.
 - **Smart page** is only rendered when it adds something: an app URL to try, an in-app browser to warn about, or a possible iPad (macOS UA with an iOS rule). Otherwise the visitor gets a 302.
 - Finer platform stats are recorded for routed clicks only (decision §11, default kept).
 

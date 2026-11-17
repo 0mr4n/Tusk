@@ -15,7 +15,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-// Kutt messages (validators.handler.js:154-163, links.handler.js:553-561).
+// Upstream messages (validators.handler.js:154-163, links.handler.js:553-561).
 const (
 	msgPasswordInvalid = "Password is invalid."
 	msgPasswordLength  = "Password length must be between 3 and 64."
@@ -77,7 +77,7 @@ func (h *Handler) ServeProtected(w http.ResponseWriter, r *http.Request) {
 			dest, routed = h.routedTarget(t, ua)
 		}
 	}
-	// Kutt records the visit here without an isbot check (links.handler.js:565).
+	// Upstream records the visit here without an isbot check (links.handler.js:565).
 	if l.UserID != nil {
 		if routed != nil {
 			h.publishRouted(r, l.ID, l.UserID, ua, routed)

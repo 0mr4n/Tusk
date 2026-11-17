@@ -4,7 +4,7 @@ Three ways to run it, from simplest to most scalable:
 
 | Setup | File | Processes | Needs Redis |
 |---|---|---|---|
-| Single binary + SQLite (drop-in for Kutt) | `../docker-compose.yml` | 1 × `tusk` | no |
+| Single binary + SQLite | `../docker-compose.yml` | 1 × `tusk` | no |
 | Single binary + Postgres / MariaDB | `../docker-compose.postgres.yml`, `../docker-compose.mariadb.yml` | 1 × `tusk` | optional (cache) |
 | Microservice split behind Traefik + Cloudflare | `docker-compose.scale.yml` | N × `redirector`, M × `api`, K × `worker` | **yes** |
 
@@ -50,7 +50,7 @@ Traefik picks the router with the highest priority whose rule matches:
 | `redirect` | 10 | main host and a single path segment `^/[^/]+/?$` | redirector |
 | `redirect-custom` | 5 | any other host except `/api/` (homepage redirect plus `/{id}`) | redirector |
 
-The SPA route list must match `internal/webui.SPARoutes`. Kutt's `preservedURLs` already stops users from
+The SPA route list must match `internal/webui.SPARoutes`. The reserved-address list (`preservedURLs`) already stops users from
 creating short links with those names, so this routing never hides a real link.
 
 `/banned`, `/404` and the password-protected link page are rendered by the redirector with
@@ -82,7 +82,7 @@ main domain.
 
 ### Custom domains
 
-Kutt tells users to point an `A` record at `SERVER_IP_ADDRESS` or a `CNAME` at `SERVER_CNAME_ADDRESS`,
+The UI tells users to point an `A` record at `SERVER_IP_ADDRESS` or a `CNAME` at `SERVER_CNAME_ADDRESS`,
 and, if they use Cloudflare themselves, to set it to **DNS only**. Two ways to handle this:
 
 - **Customer DNS-only → origin**: requests reach Traefik directly, not from Cloudflare IPs. Set

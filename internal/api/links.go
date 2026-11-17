@@ -146,7 +146,7 @@ func (s *Server) expireChain(b body, now time.Time) *chain {
 			"Expire format is invalid. Valid examples: 1m, 8h, 42 days.")
 	c.sanitize(func(v any) any { n, _ := parseMS(jsString(v)); return n })
 	c.check(func(v any) bool { n, _ := v.(float64); return n >= msM }, "Expire time should be more than 1 minute.")
-	// Kutt stores dateToUTC(new Date() + ms) with second precision.
+	// Upstream stores dateToUTC(new Date() + ms) with second precision.
 	c.sanitize(func(v any) any {
 		n, _ := v.(float64)
 		t := now.Add(time.Duration(n) * time.Millisecond).UTC().Truncate(time.Second)
@@ -235,8 +235,8 @@ func (s *Server) createLink(w http.ResponseWriter, r *http.Request) error {
 	if fetched != nil {
 		domainID = &fetched.ID
 	}
-	// reuse: truthy value (Kutt: `reuse && query.link.find(...)`)
-	// Kutt tests `reuse &&` so the string "false" would count as true; Tusk uses the boolean value.
+	// reuse: truthy value (upstream: `reuse && query.link.find(...)`)
+	// Upstream tests `reuse &&` so the string "false" would count as true; Tusk uses the boolean value.
 	if p != nil && boolish(b.get("reuse")) {
 		uid := p.User.ID
 		f := store.LinkFilter{UserID: &uid, DomainID: domainID, DefaultDomain: domainID == nil}
@@ -261,7 +261,7 @@ func (s *Server) createLink(w http.ResponseWriter, r *http.Request) error {
 			return err
 		}
 		if taken {
-			return kuttErr("Custom URL is already in use.")
+			return serverErr("Custom URL is already in use.")
 		}
 	}
 	if err := s.bannedHost(ctx, targetHost); err != nil {
@@ -290,7 +290,7 @@ func (s *Server) createLink(w http.ResponseWriter, r *http.Request) error {
 	l, err := s.st.Links().Create(ctx, in)
 	if err != nil {
 		if errors.Is(err, domain.ErrConflict) {
-			return kuttErr("Custom URL is already in use.")
+			return serverErr("Custom URL is already in use.")
 		}
 		return err
 	}
@@ -313,7 +313,7 @@ func (s *Server) createLink(w http.ResponseWriter, r *http.Request) error {
 }
 
 func (s *Server) findLinkByTarget(ctx context.Context, f store.LinkFilter, target string) (*domain.Link, error) {
-	// The store has no target filter; Kutt's reuse query is
+	// The store has no target filter; upstream's reuse query is
 	// {target, user_id, domain_id}. Page through the user's links using the
 	// search index narrowed by target (ILIKE %target% is a superset).
 	links, err := s.st.Links().List(ctx, f, target, store.Page{Limit: 50})
@@ -339,7 +339,7 @@ func (s *Server) generateID(ctx context.Context, domainID *int64) (string, error
 			return a, nil
 		}
 	}
-	return "", kuttErr("Couldn't generate a unique short URL. Try again later.")
+	return "", serverErr("Couldn't generate a unique short URL. Try again later.")
 }
 
 // bannedDomain: validators.handler.js:504-513.
@@ -421,7 +421,7 @@ func (s *Server) edit(w http.ResponseWriter, r *http.Request, adminRoute bool) e
 		if err != nil && !errors.Is(err, domain.ErrNotFound) {
 			return err
 		}
-		return kuttErr("Link was not found.")
+		return serverErr("Link was not found.")
 	}
 
 	var up store.UpdateLink
@@ -437,7 +437,7 @@ func (s *Server) edit(w http.ResponseWriter, r *http.Request, adminRoute bool) e
 		up.Description, changed = &v, true
 	}
 	if t, ok := b.get("expire_in").(time.Time); ok {
-		// Kutt: isChanged only when differing by >= 60 s, but the value is still written.
+		// Upstream: isChanged only when differing by >= 60 s, but the value is still written.
 		up.ExpireIn = &t
 		if link.ExpireIn == nil || math.Abs(t.Sub(*link.ExpireIn).Seconds()) >= 60 {
 			changed = true
@@ -459,7 +459,7 @@ func (s *Server) edit(w http.ResponseWriter, r *http.Request, adminRoute bool) e
 		return err
 	}
 	if !changed && !routingSet {
-		return kuttErr("Should at least update one field.")
+		return serverErr("Should at least update one field.")
 	}
 	if !changed { // routing-only edit
 		if err := s.applyRouting(ctx, link, routing); err != nil {
@@ -474,7 +474,7 @@ func (s *Server) edit(w http.ResponseWriter, r *http.Request, adminRoute bool) e
 			return err
 		}
 		if taken {
-			return kuttErr("Custom URL is already in use.")
+			return serverErr("Custom URL is already in use.")
 		}
 	}
 	if up.Target != nil {
@@ -490,7 +490,7 @@ func (s *Server) edit(w http.ResponseWriter, r *http.Request, adminRoute bool) e
 	updated, err := s.st.Links().Update(ctx, store.LinkFilter{ID: &lid}, up)
 	if err != nil {
 		if errors.Is(err, domain.ErrConflict) {
-			return kuttErr("Custom URL is already in use.")
+			return serverErr("Custom URL is already in use.")
 		}
 		return err
 	}
@@ -499,7 +499,7 @@ func (s *Server) edit(w http.ResponseWriter, r *http.Request, adminRoute bool) e
 		s.invalidateLink(ctx, *up.Address, link.DomainID)
 	}
 	if len(updated) == 0 {
-		return kuttErr("Link was not found.")
+		return serverErr("Link was not found.")
 	}
 	if routingSet {
 		if err := s.applyRouting(ctx, &updated[0], routing); err != nil {
@@ -533,7 +533,7 @@ func (s *Server) removeLink(w http.ResponseWriter, r *http.Request) error {
 		if err != nil && !errors.Is(err, domain.ErrNotFound) {
 			return err
 		}
-		return kuttErr("Could not find the link.")
+		return serverErr("Could not find the link.")
 	}
 	ok, err := s.st.Links().Remove(ctx, f)
 	if err != nil {
@@ -541,7 +541,7 @@ func (s *Server) removeLink(w http.ResponseWriter, r *http.Request) error {
 	}
 	s.invalidateLink(ctx, link.Address, link.DomainID)
 	if !ok {
-		return kuttErr("Could not delete the link.")
+		return serverErr("Could not delete the link.")
 	}
 	return message(w, http.StatusOK, "Link has been deleted successfully.")
 }
@@ -582,7 +582,7 @@ func (s *Server) banLink(w http.ResponseWriter, r *http.Request) error {
 	up := store.UpdateLink{Banned: &t, BannedByID: &by}
 	fail := func(err error) error {
 		s.log.Error("ban link", "err", err)
-		return kuttErr("Couldn't ban entries.")
+		return serverErr("Couldn't ban entries.")
 	}
 	if _, err := s.st.Links().Update(ctx, store.LinkFilter{UUID: &id}, up); err != nil {
 		return fail(err)
@@ -600,7 +600,7 @@ func (s *Server) banLink(w http.ResponseWriter, r *http.Request) error {
 	if boolish(b.get("host")) {
 		ip, err := s.o.LookupIP(ctx, host)
 		if err != nil {
-			return kuttErr("Couldn't fetch DNS info.")
+			return serverErr("Couldn't fetch DNS info.")
 		}
 		if err := s.st.Hosts().Ban(ctx, ip, by); err != nil {
 			return fail(err)
@@ -644,14 +644,14 @@ func (s *Server) linkStats(w http.ResponseWriter, r *http.Request) error {
 		if err != nil && !errors.Is(err, domain.ErrNotFound) {
 			return err
 		}
-		return kuttErr("Link could not be found.")
+		return serverErr("Link could not be found.")
 	}
 	statsBody := s.stats.get(ctx, link.ID)
 	if statsBody == nil {
 		st, err := s.st.Visits().Stats(ctx, link.ID, s.o.Now())
 		if err != nil || st == nil {
 			s.log.Error("stats", "err", err)
-			return kuttErr("Could not get the short link stats. Try again later.")
+			return serverErr("Could not get the short link stats. Try again later.")
 		}
 		if statsBody, err = statsJSON(st); err != nil {
 			return err
@@ -690,7 +690,7 @@ func (s *Server) reportLink(w http.ResponseWriter, r *http.Request) error {
 	}
 	if err := s.o.Mailer.SendReport(r.Context(), jsString(b.get("link"))); err != nil {
 		s.log.Error("report mail", "err", err)
-		return kuttErr("Couldn't submit the report. Try again later.")
+		return serverErr("Couldn't submit the report. Try again later.")
 	}
 	return message(w, http.StatusOK, "Thanks for the report, we'll take actions shortly.")
 }

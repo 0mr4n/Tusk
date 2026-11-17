@@ -2,11 +2,7 @@
 // internal/store/sqlstore (one implementation over database/sql, three dialects:
 // postgres via pgx stdlib, mysql via go-sql-driver, sqlite via modernc.org/sqlite).
 //
-// Semantics follow Kutt server/queries/*.js exactly; the SRS reference for each
-// method is given in its comment (docs/srs/part-A-data.md §4).
-//
-// OWNERSHIP: Agent A (data) implements. Agent B (api) consumes and must not
-// add methods without recording them in docs/CONTRACTS.md.
+// Semantics follow upstream server/queries/*.js exactly.
 package store
 
 import (
@@ -16,7 +12,7 @@ import (
 	"github.com/0mr4n/Tusk/internal/domain"
 )
 
-// Page is Kutt's skip/limit pagination (req.context.limit/skip, limit default 10, max 50).
+// Page is upstream's skip/limit pagination (req.context.limit/skip, limit default 10, max 50).
 type Page struct {
 	Skip  int
 	Limit int
@@ -24,7 +20,7 @@ type Page struct {
 
 // ---------- Links ----------
 
-// LinkFilter matches Kutt normalizeMatch keys. Nil fields are ignored.
+// LinkFilter matches upstream normalizeMatch keys. Nil fields are ignored.
 type LinkFilter struct {
 	ID       *int64
 	UUID     *string
@@ -244,11 +240,11 @@ type VisitStore interface {
 	// ApplyDeltas upserts each bucket in one transaction per delta (row lock), merges JSON maps,
 	// and increments links.visit_count by Total. Must be safe to run on N worker replicas.
 	ApplyDeltas(ctx context.Context, deltas []VisitDelta) error
-	// Stats computes the Kutt stats payload (visit.queries.js find) for a link.
+	// Stats computes the upstream stats payload (visit.queries.js find) for a link.
 	Stats(ctx context.Context, linkID int64, now time.Time) (*Stats, error)
 }
 
-// Stats is the exact JSON shape Kutt returns for GET /api/v2/links/:id/stats (minus link fields).
+// Stats is the exact JSON shape upstream returns for GET /api/v2/links/:id/stats (minus link fields).
 type Stats struct {
 	LastDay   PeriodStats `json:"lastDay"`
 	LastWeek  PeriodStats `json:"lastWeek"`
@@ -288,7 +284,7 @@ type RouteDelta struct {
 	Device map[string]int64 // mobile tablet desktop other
 }
 
-// RouteStats mirrors the Kutt stats envelope (lastDay/lastWeek/lastMonth/lastYear).
+// RouteStats mirrors the upstream stats envelope (lastDay/lastWeek/lastMonth/lastYear).
 type RouteStats struct {
 	LastDay   RoutePeriod `json:"lastDay"`
 	LastWeek  RoutePeriod `json:"lastWeek"`
@@ -336,7 +332,7 @@ type RoutingStore interface {
 	ApplyRouteDeltas(ctx context.Context, deltas []RouteDelta) error
 	RouteStats(ctx context.Context, linkID int64, now time.Time) (*RouteStats, error)
 	// SweepOrphans deletes tusk_* rows whose link/user/domain is gone (e.g. deleted
-	// by Node Kutt, which doesn't know these tables).
+	// by the Node.js original, which doesn't know these tables).
 	SweepOrphans(ctx context.Context) (int64, error)
 }
 
@@ -350,9 +346,9 @@ type Store interface {
 	Hosts() HostStore
 	Visits() VisitStore
 	Routing() RoutingStore
-	// Migrate verifies/creates schema. On an existing Kutt DB it checks knex_migrations
+	// Migrate verifies/creates schema. On an existing upstream DB it checks knex_migrations
 	// contains 20250106070444_remove_cooldown.js and refuses otherwise; on an empty DB it
-	// creates the final Kutt schema AND a knex_migrations table so Node Kutt can still run on it.
+	// creates the final upstream schema AND a knex_migrations table so the Node.js original can still run on it.
 	Migrate(ctx context.Context) error
 	Ping(ctx context.Context) error
 	Close() error

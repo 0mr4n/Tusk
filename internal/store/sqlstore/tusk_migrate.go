@@ -10,8 +10,8 @@ import (
 
 // Tusk-only schema (docs/UNIVERSAL-LINKS.md §3).
 //
-// Kutt's tables are never altered (C1). Tusk features live in additive tusk_*
-// tables tracked by their own ledger, tusk_migrations, so Node Kutt can keep
+// Upstream's tables are never altered (C1). Tusk features live in additive tusk_*
+// tables tracked by their own ledger, tusk_migrations, so the Node.js original can keep
 // running on the same database and simply ignores them.
 
 type tuskMigration struct {
@@ -111,7 +111,7 @@ func routeCountCols(typ string) string {
 
 // Routing-table readiness. Only the API role migrates; a standalone redirector or
 // worker may start before the tables exist (rolling upgrade). Until they do, the
-// store uses the original Kutt-only queries and re-probes periodically.
+// store uses the original legacy-only queries and re-probes periodically.
 const (
 	tuskUnknown int32 = iota
 	tuskReady

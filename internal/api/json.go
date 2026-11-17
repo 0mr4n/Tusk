@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-// This file renders Kutt's JSON shapes (utils.js sanitize.*) with the same
+// This file renders upstream's JSON shapes (utils.js sanitize.*) with the same
 // key order as Express (JSON.stringify of the spread DB row), JavaScript
 // Date serialisation (ISO-8601, milliseconds, "Z") and no HTML escaping
 // (JSON.stringify does not escape <, >, &).

@@ -1,4 +1,4 @@
-// Golden values for internal/store/sqlstore TestDateFns. Run inside a Kutt checkout:
+// Golden values for internal/store/sqlstore TestDateFns. Run inside an upstream checkout:
 //   TZ=UTC node datefns_golden.js
 const { differenceInHours, differenceInDays, differenceInMonths } = require("date-fns");
 const cases = [

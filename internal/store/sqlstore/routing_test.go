@@ -29,7 +29,7 @@ func TestTuskMigrations(t *testing.T) {
 		if err := db.db.QueryRow("SELECT COUNT(*) FROM tusk_migrations").Scan(&n); err != nil || n != len(tuskMigrations) {
 			t.Fatalf("tusk_migrations rows = %d (%v)", n, err)
 		}
-		// Kutt's ledger is untouched by Tusk migrations.
+		// Upstream's ledger is untouched by Tusk migrations.
 		db.db.QueryRow("SELECT COUNT(*) FROM knex_migrations").Scan(&n)
 		if n != len(KnexMigrations) {
 			t.Fatalf("knex_migrations rows = %d", n)
@@ -51,7 +51,7 @@ func TestResolveBeforeTuskMigration(t *testing.T) {
 	}
 	defer db.Close()
 	conn, _ := db.db.Conn(ctx)
-	if err := db.createSchema(ctx, conn); err != nil { // Kutt schema only
+	if err := db.createSchema(ctx, conn); err != nil { // Upstream schema only
 		t.Fatal(err)
 	}
 	conn.Close()
@@ -262,7 +262,7 @@ func TestSweepOrphans(t *testing.T) {
 		rs.Put(ctx, l.ID, sampleRouting())
 		rs.PutDomainApps(ctx, domain.DomainApps{DomainID: 424242, AndroidPackage: "x"})
 		rs.PutDomainApps(ctx, domain.DomainApps{DomainID: 0, AndroidPackage: "x"})
-		// Simulate Node Kutt deleting the link without knowing the tusk_* tables
+		// Simulate the Node.js original deleting the link without knowing the tusk_* tables
 		// (FK enforcement off on that connection, as with a plain sqlite3 client).
 		if db.d == dPostgres {
 			t.Skip("postgres always enforces FKs; the orphan state cannot arise")

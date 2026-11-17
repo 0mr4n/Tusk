@@ -2,7 +2,7 @@ package sqlstore
 
 import "time"
 
-// date-fns 2.30.0 (Kutt's pinned version) ported for UTC. Kutt runs in a UTC container
+// date-fns 2.30.0 (upstream's pinned version) ported for UTC. Upstream runs in a UTC container
 // (node:22-alpine, no TZ) and stats use the process local time zone, so UTC is the faithful
 // choice. Each function mirrors node_modules/date-fns/<name>/index.js line by line.
 

@@ -20,7 +20,7 @@ import type { CurrentUser, PublicConfig } from "@/lib/api"
 
 type Errors = Partial<Record<keyof CreateLinkInput | "form", string>>
 
-/** Map Kutt's single error string back to a field (it only returns the first message). */
+/** Map upstream's single error string back to a field (it only returns the first message). */
 function fieldFor(msg: string): keyof Errors {
   const m = msg.toLowerCase()
   if (m.includes("routing")) return "routing"

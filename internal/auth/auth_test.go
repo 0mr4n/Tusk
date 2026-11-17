@@ -22,8 +22,8 @@ type nodeVectors struct {
 	} `json:"jwt"`
 }
 
-// testdata/node_vectors.json was produced by running Kutt's own dependencies
-// (bcryptjs 2.4.3, jsonwebtoken 9 from /root/Omran/kutt/package-lock.json)
+// testdata/node_vectors.json was produced by running upstream's own dependencies
+// (bcryptjs 2.4.3, jsonwebtoken 9)
 // in a scratch copy: node vectors.js > testdata/node_vectors.json.
 func loadVectors(t *testing.T) nodeVectors {
 	t.Helper()

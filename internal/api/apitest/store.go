@@ -1,5 +1,5 @@
 // Package apitest provides an in-memory store.Store and resolver fakes for
-// Tusk HTTP handler tests. Semantics follow Kutt's queries closely enough for
+// Tusk HTTP handler tests. Semantics follow upstream's queries closely enough for
 // handler tests; it is not a substitute for sqlstore's own tests.
 package apitest
 

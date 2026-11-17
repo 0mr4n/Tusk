@@ -20,7 +20,7 @@ const PERIODS: { key: Period; label: string; long: string }[] = [
   { key: "lastYear", label: "Year", long: "last year" },
 ]
 
-/** Axis labels, same as Kutt static/scripts/stats.js createViewsChartLabel. */
+/** Axis labels, same as upstream static/scripts/stats.js createViewsChartLabel. */
 function viewLabels(period: Period, now = new Date()): string[] {
   const labels: string[] = []
   const month = (d: Date) => d.toLocaleString("en-US", { month: "short" })

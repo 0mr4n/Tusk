@@ -28,7 +28,7 @@ func (s *Server) getUser(w http.ResponseWriter, r *http.Request) error {
 	for i := range doms {
 		data = append(data, s.domainJSON(&doms[i]))
 	}
-	// Kutt: {apikey, email, domains}; id/role/verified are Tusk extensions.
+	// Upstream: {apikey, email, domains}; id/role/verified are Tusk extensions.
 	writeJSON(w, http.StatusOK, obj{
 		{"apikey", strOrNil(p.User.APIKey)},
 		{"email", p.User.Email},
@@ -60,8 +60,8 @@ func (s *Server) getUsersAdmin(w http.ResponseWriter, r *http.Request) error {
 		rl := domain.Role(role)
 		f.Role = &rl
 	}
-	// NOTE: Kutt also filters by ?domains= / ?links= (is [not] null); the
-	// shared store contract has no such fields (requested in CONTRACTS.md).
+	// NOTE: upstream also filters by ?domains= / ?links= (is [not] null); the
+	// shared store contract has no such fields.
 	ctx := r.Context()
 	users, err := s.st.Users().ListAdmin(ctx, f, store.Page{Skip: q.skip, Limit: q.limit})
 	if err != nil {
@@ -133,9 +133,9 @@ func (s *Server) createUser(w http.ResponseWriter, r *http.Request) error {
 			return err
 		}
 	}
-	// Kutt: `if (verification_email && !user.banned && !user.verified) mail.verification(user)`
+	// Upstream: `if (verification_email && !user.banned && !user.verified) mail.verification(user)`
 	// — user.verification_token is undefined there (create doesn't set one), so
-	// Kutt mails a broken link. Tusk issues a real token.
+	// Upstream mails a broken link. Tusk issues a real token.
 	if boolish(b.get("verification_email")) && !u.Banned && !u.Verified && s.o.Mailer.Enabled() {
 		if err := s.sendNewVerification(r, u); err != nil {
 			return err
@@ -154,7 +154,7 @@ func (s *Server) sendNewVerification(r *http.Request, u *domain.User) error {
 	}
 	if err := s.o.Mailer.SendVerification(r.Context(), u.Email, token); err != nil {
 		s.log.Error("send verification", "err", err)
-		return kuttErr("Couldn't send verification email. Try again later.")
+		return serverErr("Couldn't send verification email. Try again later.")
 	}
 	return nil
 }
@@ -177,7 +177,7 @@ func (s *Server) deleteUser(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	s.o.Auth.ClearTokenCookie(w)
-	// Kutt API answers res.send("OK") (text); the SPA contract asks for {message}.
+	// Upstream API answers res.send("OK") (text); the SPA contract asks for {message}.
 	return message(w, http.StatusOK, "Account has been deleted.")
 }
 
@@ -233,7 +233,7 @@ func (s *Server) deleteUserAdmin(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	if u == nil {
-		// Kutt: res.status(400).send({ message }) (not {error}).
+		// Upstream: res.status(400).send({ message }) (not {error}).
 		writeJSON(w, http.StatusBadRequest, obj{{"message", "Could not find the user."}})
 		return nil
 	}
@@ -278,7 +278,7 @@ func (s *Server) banUser(w http.ResponseWriter, r *http.Request) error {
 	by := p.User.ID
 	fail := func(err error) error {
 		s.log.Error("ban user", "err", err)
-		return kuttErr("Couldn't ban entries.")
+		return serverErr("Couldn't ban entries.")
 	}
 	if _, err := s.st.Users().Update(ctx, store.UserFilter{ID: &id}, store.UpdateUser{Banned: &t, BannedByID: &by}); err != nil {
 		return fail(err)
@@ -466,7 +466,7 @@ func (s *Server) removeDomainAdmin(w http.ResponseWriter, r *http.Request) error
 		}
 		return errBody(http.StatusBadRequest, "Could not find the domain.")
 	}
-	// Kutt: `if (links)` on the raw query string -> any non-empty value
+	// Upstream: `if (links)` on the raw query string -> any non-empty value
 	// (even "false") deletes the links. Tusk honours the boolean.
 	if boolish(lc.v) {
 		for {
@@ -562,13 +562,13 @@ func (s *Server) banDomain(w http.ResponseWriter, r *http.Request) error {
 	by := p.User.ID
 	fail := func(err error) error {
 		s.log.Error("ban domain", "err", err)
-		return kuttErr("Couldn't ban entries.")
+		return serverErr("Couldn't ban entries.")
 	}
 	if _, err := s.st.Domains().Update(ctx, store.DomainFilter{ID: &id}, store.UpdateDomain{Banned: &t, BannedByID: &by}); err != nil {
 		return fail(err)
 	}
 	s.invalidateDomain(ctx, d.Address)
-	// Kutt reads req.body.user, which the validator never declares.
+	// Upstream reads req.body.user, which the validator never declares.
 	if truthy(b.get("user")) && d.UserID != nil {
 		if _, err := s.st.Users().Update(ctx, store.UserFilter{ID: d.UserID}, store.UpdateUser{Banned: &t, BannedByID: &by}); err != nil {
 			return fail(err)

@@ -56,7 +56,7 @@ func (f *fakeDomains) Find(_ context.Context, fl store.DomainFilter) (*domain.Do
 }
 
 func testCfg() *config.Config {
-	return &config.Config{LocalCacheSize: 1000, LocalCacheTTL: time.Minute, RedisCacheTTL: time.Minute, DefaultDomain: "kutt.local:3000"}
+	return &config.Config{LocalCacheSize: 1000, LocalCacheTTL: time.Minute, RedisCacheTTL: time.Minute, DefaultDomain: "tusk.local:3000"}
 }
 
 func TestResolveLocal(t *testing.T) {
@@ -128,7 +128,7 @@ func TestDomainResolver(t *testing.T) {
 	fd := &fakeDomains{}
 	d := NewDomainResolver(fd, nil, testCfg())
 	ctx := context.Background()
-	for _, h := range []string{"kutt.local:3000", "www.KUTT.local:3000", ""} {
+	for _, h := range []string{"tusk.local:3000", "www.TUSK.local:3000", ""} {
 		if dom, err := d.ResolveHost(ctx, h); dom != nil || err != nil {
 			t.Fatalf("default %q", h)
 		}
@@ -139,14 +139,14 @@ func TestDomainResolver(t *testing.T) {
 	}
 	d.ResolveHost(ctx, "custom.io")
 	if dom, _ := d.ResolveHost(ctx, "unknown.io"); dom != nil {
-		t.Fatal("unknown host -> nil (Kutt uses default links)")
+		t.Fatal("unknown host -> nil (upstream uses default links)")
 	}
 	d.ResolveHost(ctx, "unknown.io")
 	if fd.calls.Load() != 2 {
 		t.Fatal("domain caching", fd.calls.Load())
 	}
 	if NormalizeHost("awww.x.com") != "ax.com" {
-		t.Fatal("Kutt removeWww replaces first occurrence anywhere")
+		t.Fatal("upstream removeWww replaces first occurrence anywhere")
 	}
 }
 
