@@ -39,9 +39,9 @@ x-tusk-env: &tusk-env
   METRICS_PORT: 9090
 
 x-tusk: &tusk
-  image: ${TUSK_IMAGE:-tusk:latest}
-  build:
-    context: ..
+  # Prebuilt multi-arch image; set TUSK_IMAGE in .env to pin a release (recommended
+  # in production) or to a locally built tag (`make docker` → tusk:dev).
+  image: ${TUSK_IMAGE:-ghcr.io/0mr4n/tusk:latest}
   restart: unless-stopped
   env_file:
     - path: .env

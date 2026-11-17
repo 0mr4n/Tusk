@@ -4,9 +4,9 @@
 #     docker compose -f docker-compose.postgres.yml up -d
 services:
   server:
-    build:
-      context: .
-    image: tusk:latest
+    # Prebuilt multi-arch image. Pin a version with TUSK_IMAGE=ghcr.io/0mr4n/tusk:0.3.1,
+    # or use a local build: `make docker` then TUSK_IMAGE=tusk:dev.
+    image: ${TUSK_IMAGE:-ghcr.io/0mr4n/tusk:latest}
     restart: unless-stopped
     volumes:
       - custom:/kutt/custom

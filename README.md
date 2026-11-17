@@ -29,6 +29,7 @@ Architecture: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Requirements: [docs/
 ```sh
 # Single binary + SQLite (same as Kutt's docker-compose.yml)
 JWT_SECRET=$(openssl rand -hex 32) DEFAULT_DOMAIN=localhost:3000 docker compose up -d
+# The compose files pull ghcr.io/0mr4n/tusk:latest; pin with TUSK_IMAGE=ghcr.io/0mr4n/tusk:0.3.1
 open http://localhost:3000          # first visit → create the admin account
 ```
 
@@ -62,7 +63,7 @@ Requires Go 1.27+ and Node 22+ (26 recommended).
 make build        # npm ci + vite build → internal/webui/dist → static binaries in bin/
 make run          # ./bin/tusk on :3000 (SQLite at db/data)
 make test         # go vet, go test -race ./..., web typecheck + lint
-make docker       # docker build -t tusk:dev .
+make docker       # docker build -t tusk:dev .  (run it with TUSK_IMAGE=tusk:dev docker compose up -d)
 ```
 
 `go build ./...` also works without Node. The binary then serves a placeholder page instead of the UI,

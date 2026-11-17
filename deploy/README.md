@@ -28,6 +28,17 @@ docker compose -f deploy/docker-compose.scale.yml --env-file deploy/.env up -d
 docker compose -f deploy/docker-compose.scale.yml --env-file deploy/.env up -d --scale redirector=6 --scale api=2
 ```
 
+The stack runs the prebuilt image set by `TUSK_IMAGE` in `.env` (default in the example: a pinned
+release from `ghcr.io/0mr4n/tusk`). To upgrade, bump `TUSK_IMAGE` and run:
+
+```sh
+docker compose -f deploy/docker-compose.scale.yml --env-file deploy/.env pull
+docker compose -f deploy/docker-compose.scale.yml --env-file deploy/.env up -d
+```
+
+Only the `api` role runs database migrations; redirectors and workers that start first keep serving
+with the previous schema until the new tables appear.
+
 ### Routing rules
 
 Traefik picks the router with the highest priority whose rule matches:
