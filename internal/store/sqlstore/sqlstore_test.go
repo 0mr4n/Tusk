@@ -50,7 +50,8 @@ func wiped(t *testing.T, kind, dsn string) *DB {
 	if err != nil {
 		t.Fatal(err)
 	}
-	tables := []string{"visits", "links", "domains", "hosts", "ips", "users", "knex_migrations", "knex_migrations_lock"}
+	tables := []string{"tusk_route_visits", "tusk_link_routing", "tusk_user_routing", "tusk_domain_apps", "tusk_migrations",
+		"visits", "links", "domains", "hosts", "ips", "users", "knex_migrations", "knex_migrations_lock"}
 	if kind == "mysql" {
 		db.db.Exec("SET FOREIGN_KEY_CHECKS=0")
 		for _, tb := range tables {
@@ -503,7 +504,8 @@ func TestSchemaMatchesKutt(t *testing.T) {
 		}
 	}
 	idx := func(db *sql.DB) string {
-		rows, _ := db.Query("SELECT name FROM sqlite_master WHERE type='index' AND name NOT LIKE 'sqlite_%' ORDER BY name")
+		// tusk_* indexes belong to Tusk's additive tables, which Kutt doesn't have.
+		rows, _ := db.Query("SELECT name FROM sqlite_master WHERE type='index' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE 'tusk_%' ORDER BY name")
 		defer rows.Close()
 		var out []string
 		for rows.Next() {

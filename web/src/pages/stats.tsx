@@ -9,7 +9,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart"
-import { useLinkStats, type Period, type PeriodStats, type StatItem } from "@/lib/api"
+import { MODE_INFO } from "@/lib/routing"
+import { useLinkStats, useRouteStats, type Period, type PeriodStats, type RouteStats, type StatItem } from "@/lib/api"
 import { copyText, formatNumber, parseDate, stripProtocol } from "@/lib/format"
 
 const PERIODS: { key: Period; label: string; long: string }[] = [
@@ -46,6 +47,41 @@ function viewLabels(period: Period, now = new Date()): string[] {
 
 const BROWSERS: Record<string, string> = { firefox: "Firefox", chrome: "Chrome", edge: "Edge", opera: "Opera", safari: "Safari", other: "Other", ie: "IE" }
 const OSES: Record<string, string> = { android: "Android", ios: "iOS", linux: "Linux", macos: "macOS", windows: "Windows", other: "Other" }
+const ROUTES: Record<string, string> = { ios: "iOS rule", android: "Android rule", desktop: "Desktop rule", fallback: "Fallback (target)" }
+const PLATFORM_OSES: Record<string, string> = { ...OSES, ipados: "iPadOS", chromeos: "ChromeOS" }
+const DEVICES: Record<string, string> = { mobile: "Mobile", tablet: "Tablet", desktop: "Desktop", other: "Other" }
+
+/** Platform routing breakdown (TUSK EXTENSION) for one period. */
+function RoutingPanel({ stats, period, long }: { stats: RouteStats; period: Period; long: string }) {
+  const s = stats[period]
+  const nonZero = (items: StatItem[]) => items.filter((i) => i.value > 0)
+  return (
+    <section aria-labelledby={`routing-${period}`} className="grid gap-4">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h2 id={`routing-${period}`} className="text-lg font-semibold">
+          Platform routing
+          {stats.routing && (
+            <span className="ml-2 text-sm font-normal text-muted-foreground">
+              {MODE_INFO[stats.routing.mode].label}
+              {stats.routing.enabled ? "" : " (off)"}
+            </span>
+          )}
+        </h2>
+        <p className="text-sm text-muted-foreground">
+          {formatNumber(s.total)} routed views in the {long}
+        </p>
+      </div>
+      <div className="grid gap-6 md:grid-cols-3">
+        <BarList title="Destinations" items={nonZero(s.stats.route)} format={(n) => ROUTES[n] ?? n} />
+        <BarList title="Platforms" items={nonZero(s.stats.os)} format={(n) => PLATFORM_OSES[n] ?? n} />
+        <BarList title="Devices" items={nonZero(s.stats.device)} format={(n) => DEVICES[n] ?? n} />
+      </div>
+      <p className="text-xs text-muted-foreground">
+        Counts human clicks that went through routing. iPads in desktop mode report as macOS.
+      </p>
+    </section>
+  )
+}
 
 let regionNames: Intl.DisplayNames | null = null
 function countryName(code: string): string {
@@ -140,6 +176,7 @@ export default function StatsPage() {
   const id = params.get("id") ?? ""
   const { data, isPending, error } = useLinkStats(id)
   const [period, setPeriod] = useState<Period>("lastDay")
+  const { data: routeStats } = useRouteStats(id, !!data?.routing)
 
   if (!id) {
     return (
@@ -227,6 +264,7 @@ export default function StatsPage() {
                 <BarList title="Countries" items={s.stats.country} format={(n) => `${flag(n)} ${countryName(n)}`.trim()} />
                 <BarList title="Operating systems" items={s.stats.os} format={(n) => OSES[n] ?? n} />
               </div>
+              {routeStats && <RoutingPanel stats={routeStats} period={p.key} long={p.long} />}
             </TabsContent>
           )
         })}

@@ -31,7 +31,8 @@ var ErrSchemaTooOld = errors.New("sqlstore: Kutt database is not fully migrated:
 
 // Migrate verifies or creates the schema (store.Store.Migrate).
 //
-//   - knex_migrations exists: require LastKnexMigration, never alter anything (C1).
+//   - knex_migrations exists: require LastKnexMigration, never alter Kutt's tables (C1).
+//   - Either way, then apply pending Tusk-only tusk_* migrations (tusk_migrate.go).
 //   - Empty DB: create the final Kutt schema exactly as knex 3.1 emits it after all 10
 //     migrations (DDL captured from `knex migrate:latest` on each dialect), plus
 //     knex_migrations / knex_migrations_lock rows.
@@ -60,7 +61,7 @@ func (s *DB) Migrate(ctx context.Context) error {
 		if n == 0 {
 			return ErrSchemaTooOld
 		}
-		return nil
+		return s.migrateTusk(ctx, conn)
 	}
 	for _, t := range []string{"users", "links", "visits", "domains"} {
 		ok, err := s.hasTable(ctx, conn, t)
@@ -71,7 +72,10 @@ func (s *DB) Migrate(ctx context.Context) error {
 			return fmt.Errorf("sqlstore: table %q exists but knex_migrations does not; refusing to guess the schema version", t)
 		}
 	}
-	return s.createSchema(ctx, conn)
+	if err := s.createSchema(ctx, conn); err != nil {
+		return err
+	}
+	return s.migrateTusk(ctx, conn)
 }
 
 func (s *DB) migrationLock(ctx context.Context, conn *sql.Conn) (func(), error) {

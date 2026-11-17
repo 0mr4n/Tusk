@@ -1,6 +1,6 @@
 # Universal links (platform routing): design plan
 
-Status: **draft for review**. Nothing here is implemented yet.
+Status: **implemented** (all six phases). Differences from the original draft are listed in §12.
 
 ## 1. Goal
 
@@ -174,3 +174,14 @@ Each phase can ship on its own and is gated by `make test`.
 - **Who gets routing by default:** all users get `ROUTING_DEFAULT_MODES` unless an admin restricts them. The alternative is opt-in, where an admin grants each user.
 - **Where finer platform stats come from:** recorded only for **routed** clicks. The alternative is recording OS and device for every link (still about 1 row update per link per hour).
 - **`smart` page caching:** `no-store`, so every click is counted.
+
+## 12. Implementation notes (deviations from the draft)
+
+- **Route stats use fixed counter columns** (`r_*`, `os_*`, `dev_*`) instead of JSON maps, so the worker upserts with atomic increments (`ON CONFLICT … DO UPDATE` / `ON DUPLICATE KEY UPDATE`) and no read-modify-write. Adding a platform later needs a small `tusk_*` migration.
+- **Rule URLs must be http(s)**, stricter than link targets (Kutt accepts any scheme). The smart page navigates from script, so it is also never rendered when the fallback target is not http(s); those visitors get a plain 302.
+- **Admins always have every mode.** `ROUTING_DEFAULT_MODES=none` makes routing opt-in per user.
+- **Rollout safety:** only the api role migrates. A redirector or worker that starts first keeps using the original Kutt query and re-probes for the `tusk_*` tables every 15 s.
+- **Orphans** (rows left when Node Kutt deletes a link, user or domain) are removed by the worker every hour.
+- **Smart page** is only rendered when it adds something: an app URL to try, an in-app browser to warn about, or a possible iPad (macOS UA with an iOS rule). Otherwise the visitor gets a 302.
+- Finer platform stats are recorded for routed clicks only (decision §11, default kept).
+

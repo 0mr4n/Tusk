@@ -118,6 +118,11 @@ type Config struct {
 	ExpiredLinkSweep   time.Duration // EXPIRED_LINK_SWEEP (30s) — Kutt cron.js interval
 
 	StaticDir string // TUSK_CUSTOM_DIR (custom) — on-disk overrides for images/css
+
+	// Platform routing ("universal links", docs/UNIVERSAL-LINKS.md).
+	RoutingEnabled      bool          // ROUTING_ENABLED (true): off = redirector ignores rules, API rejects writes
+	RoutingDefaultModes []string      // ROUTING_DEFAULT_MODES (redirect,deeplink,smart; "none" = opt-in): modes users get unless an admin overrides
+	RoutingSmartTimeout time.Duration // ROUTING_SMART_TIMEOUT (1500ms): smart page wait before falling back from the app
 }
 
 // Load reads configuration from the process environment.
@@ -208,6 +213,13 @@ func LoadFrom(lookup func(string) (string, bool)) (*Config, error) {
 
 	c.StaticDir = e.str("TUSK_CUSTOM_DIR", "custom")
 
+	c.RoutingEnabled = e.bool("ROUTING_ENABLED", true)
+	c.RoutingDefaultModes = e.list("ROUTING_DEFAULT_MODES", []string{"redirect", "deeplink", "smart"})
+	if len(c.RoutingDefaultModes) == 1 && strings.EqualFold(c.RoutingDefaultModes[0], "none") {
+		c.RoutingDefaultModes = nil // opt-in: only users an admin grants get routing
+	}
+	c.RoutingSmartTimeout = e.dur("ROUTING_SMART_TIMEOUT", 1500*time.Millisecond)
+
 	if len(e.errs) > 0 {
 		return nil, errors.Join(e.errs...)
 	}
@@ -236,6 +248,16 @@ func (c *Config) Validate() error {
 	}
 	if c.LinkLength < 1 || c.LinkAlphabet == "" {
 		errs = append(errs, errors.New("LINK_LENGTH must be >=1 and LINK_CUSTOM_ALPHABET non-empty"))
+	}
+	for i, m := range c.RoutingDefaultModes {
+		m = strings.ToLower(m)
+		c.RoutingDefaultModes[i] = m
+		if m != "redirect" && m != "deeplink" && m != "smart" {
+			errs = append(errs, fmt.Errorf("ROUTING_DEFAULT_MODES: unknown mode %q (redirect|deeplink|smart)", m))
+		}
+	}
+	if c.RoutingSmartTimeout < 0 || c.RoutingSmartTimeout > 10*time.Second {
+		errs = append(errs, errors.New("ROUTING_SMART_TIMEOUT must be between 0 and 10s"))
 	}
 	if c.SplitMode() && !c.RedisEnabled {
 		errs = append(errs, errors.New("SERVICE_ROLES other than 'all' require REDIS_ENABLED=true (events and cache invalidation cross processes via Redis)"))

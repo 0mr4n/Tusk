@@ -127,6 +127,9 @@ which reads the value from a file (Docker secrets).
 | `VISIT_FLUSH_INTERVAL` | Max wait before a flush | `1s` |
 | `VISIT_BUFFER_SIZE` | In-memory event buffer (single-binary mode); overflow is dropped and counted | `100000` |
 | `EXPIRED_LINK_SWEEP` | Expired-link cleanup interval (Kutt: 30 s) | `30s` |
+| `ROUTING_ENABLED` | Platform routing ("universal links", [docs/UNIVERSAL-LINKS.md](docs/UNIVERSAL-LINKS.md)). `false`: routed links redirect to their target like Kutt and the API rejects routing writes | `true` |
+| `ROUTING_DEFAULT_MODES` | Routing modes users get unless an admin overrides them: any of `redirect,deeplink,smart`, or `none` (opt-in per user). Admins always get every mode | `redirect,deeplink,smart` |
+| `ROUTING_SMART_TIMEOUT` | How long the smart page waits for the app before falling back (max 10s) | `1500ms` |
 | `TUSK_CUSTOM_DIR` | Directory for `images/` and `css/` overrides | `custom` (image: `/kutt/custom`) |
 
 Durations use Go syntax (`500ms`, `30s`, `15m`).

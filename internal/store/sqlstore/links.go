@@ -439,6 +439,16 @@ func (s *DB) deleteLinks(ctx context.Context, x querier, ids []int64) error {
 		if _, err := x.ExecContext(ctx, s.q("DELETE FROM visits WHERE link_id IN ("+ph+")"), args...); err != nil {
 			return err
 		}
+		// Tusk routing tables (docs/UNIVERSAL-LINKS.md §3): explicit, so SQLite files
+		// opened without foreign_keys and MySQL id reuse never leave stale rules behind.
+		for _, tb := range []string{"tusk_route_visits", "tusk_link_routing"} {
+			if !s.tuskReadyOn(ctx, x) {
+				break
+			}
+			if _, err := x.ExecContext(ctx, s.q("DELETE FROM "+tb+" WHERE link_id IN ("+ph+")"), args...); err != nil {
+				return err
+			}
+		}
 		if _, err := x.ExecContext(ctx, s.q("DELETE FROM links WHERE id IN ("+ph+")"), args...); err != nil {
 			return err
 		}
@@ -497,20 +507,36 @@ func (ls *linkStore) RemoveExpired(ctx context.Context, now time.Time) ([]store.
 func (ls *linkStore) Resolve(ctx context.Context, address string, domainID *int64) (*domain.RedirectTarget, error) {
 	s := ls.s
 	var (
-		t      domain.RedirectTarget
-		userID sql.NullInt64
-		pw     sql.NullString
-		expire nullTime
-		banned boolScan
-		row    *sql.Row
+		t       domain.RedirectTarget
+		userID  sql.NullInt64
+		pw      sql.NullString
+		expire  nullTime
+		banned  boolScan
+		row     *sql.Row
+		rEnable sql.NullBool
+		rMode   sql.NullString
+		rRules  []byte
 	)
-	const cols = "SELECT id, uuid, user_id, target, banned, password, expire_in FROM links WHERE address = ? AND "
-	if domainID == nil {
-		row = s.db.QueryRowContext(ctx, s.q(cols+"domain_id IS NULL LIMIT 1"), address)
-	} else {
-		row = s.db.QueryRowContext(ctx, s.q(cols+"domain_id = ? LIMIT 1"), address, *domainID)
+	// Platform routing rides along in the same single-row lookup (LEFT JOIN on the
+	// tusk_link_routing primary key) once the tusk_* tables exist.
+	routing := s.tuskReady(ctx)
+	cols := "SELECT links.id, links.uuid, links.user_id, links.target, links.banned, links.password, links.expire_in"
+	from := " FROM links"
+	if routing {
+		cols += ", tusk_link_routing.enabled, tusk_link_routing.mode, tusk_link_routing.rules"
+		from += " LEFT JOIN tusk_link_routing ON tusk_link_routing.link_id = links.id"
 	}
-	if err := row.Scan(&t.LinkID, &t.UUID, &userID, &t.Target, &banned, &pw, &expire); err != nil {
+	q := cols + from + " WHERE links.address = ? AND "
+	if domainID == nil {
+		row = s.db.QueryRowContext(ctx, s.q(q+"links.domain_id IS NULL LIMIT 1"), address)
+	} else {
+		row = s.db.QueryRowContext(ctx, s.q(q+"links.domain_id = ? LIMIT 1"), address, *domainID)
+	}
+	dest := []any{&t.LinkID, &t.UUID, &userID, &t.Target, &banned, &pw, &expire}
+	if routing {
+		dest = append(dest, (*nullBoolScan)(&rEnable), &rMode, &rRules)
+	}
+	if err := row.Scan(dest...); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, domain.ErrNotFound
 		}
@@ -520,7 +546,29 @@ func (ls *linkStore) Resolve(ctx context.Context, address string, domainID *int6
 	t.Banned = bool(banned)
 	t.HasPassword = pw.Valid && pw.String != "" // Kutt: `if (link.password)`
 	t.ExpireIn = expire.ptr()
+	if rEnable.Valid && rEnable.Bool && rMode.Valid {
+		// A corrupt rules value must not take the link down: fall back to the target.
+		if r, err := decodeRouting(true, rMode.String, rRules); err == nil && r.Mode.Valid() {
+			t.Routing = r
+		}
+	}
 	return &t, nil
+}
+
+// nullBoolScan scans bool/int/text booleans into a sql.NullBool.
+type nullBoolScan sql.NullBool
+
+func (n *nullBoolScan) Scan(v any) error {
+	if v == nil {
+		n.Valid, n.Bool = false, false
+		return nil
+	}
+	var b boolScan
+	if err := b.Scan(v); err != nil {
+		return err
+	}
+	n.Valid, n.Bool = true, bool(b)
+	return nil
 }
 
 func (ls *linkStore) AddressTaken(ctx context.Context, address string, domainID *int64) (bool, error) {

@@ -224,7 +224,11 @@ func (ds *domainStore) Remove(ctx context.Context, id int64) error {
 	if n, _ := res.RowsAffected(); n == 0 {
 		return domain.ErrNotFound
 	}
-	return nil
+	if !s.tuskReady(ctx) {
+		return nil
+	}
+	_, err = s.db.ExecContext(ctx, s.q("DELETE FROM tusk_domain_apps WHERE domain_id = ?"), id)
+	return err
 }
 
 // adminDomainWhere: domains.handler.js getAdmin:115-131 + domain.queries.js getAdmin/totalAdmin.

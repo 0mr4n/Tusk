@@ -112,3 +112,69 @@ func BenchmarkFold(b *testing.B) {
 		Fold(batch)
 	}
 }
+
+func TestFoldRoutes(t *testing.T) {
+	now := time.Date(2026, 9, 28, 10, 30, 0, 0, time.UTC)
+	batch := []domain.VisitEvent{
+		{V: 1, LinkID: 1, UserID: uid(1), Timestamp: now},                                                       // not routed
+		{V: 2, LinkID: 1, UserID: uid(1), Route: "ios", PlatformOS: "ipados", Device: "tablet", Timestamp: now}, // routed
+		{V: 2, LinkID: 1, UserID: uid(1), Route: "fallback", PlatformOS: "other", Device: "other", Timestamp: now.Add(5 * time.Minute)},
+		{V: 2, LinkID: 1, UserID: uid(1), Route: "weird", PlatformOS: "beos", Device: "watch", Timestamp: now},
+		{V: 2, LinkID: 1, UserID: uid(1), Route: "android", PlatformOS: "android", Device: "mobile", Timestamp: now.Add(time.Hour)},
+		{V: 2, LinkID: 2, Route: "ios", Timestamp: now}, // anonymous: skipped like Kutt
+	}
+	d := FoldRoutes(batch)
+	if len(d) != 2 {
+		t.Fatalf("deltas %d: %+v", len(d), d)
+	}
+	a := d[0]
+	if a.Total != 3 || a.Routes["ios"] != 1 || a.Routes["fallback"] != 2 || a.OS["ipados"] != 1 || a.OS["other"] != 2 ||
+		a.Device["tablet"] != 1 || a.Device["other"] != 2 || !a.Hour.Equal(now.Truncate(time.Hour)) {
+		t.Fatalf("delta %+v", a)
+	}
+	if d[1].Total != 1 || d[1].Routes["android"] != 1 {
+		t.Fatalf("second hour %+v", d[1])
+	}
+	if len(FoldRoutes(batch[:1])) != 0 {
+		t.Fatal("v1 events must not produce route deltas")
+	}
+}
+
+func TestWorkerAppliesRoutes(t *testing.T) {
+	ctx := context.Background()
+	db, err := sqlstore.OpenDSN(ctx, "sqlite", filepath.Join(t.TempDir(), "wr.sqlite"), 1, 4)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	if err := db.Migrate(ctx); err != nil {
+		t.Fatal(err)
+	}
+	u, _ := db.Users().Create(ctx, store.CreateUser{Email: "wr@x", Password: "x"})
+	l, _ := db.Links().Create(ctx, store.CreateLink{Address: "wr", Target: "https://t", UserID: &u.ID})
+	w := New(db, nil, nil, &config.Config{})
+	var batch []domain.VisitEvent
+	for i := 0; i < 30; i++ {
+		ev := domain.VisitEvent{V: 2, LinkID: l.ID, UserID: &u.ID, Browser: "chrome", OS: "ios", Timestamp: time.Now().UTC(),
+			Route: "ios", PlatformOS: "ios", Device: "mobile"}
+		if i%3 == 0 {
+			ev.Route, ev.PlatformOS, ev.Device = "fallback", "other", "other"
+		}
+		batch = append(batch, ev)
+	}
+	batch = append(batch, domain.VisitEvent{V: 1, LinkID: l.ID, UserID: &u.ID, Timestamp: time.Now().UTC()})
+	if err := w.Handle(ctx, batch); err != nil {
+		t.Fatal(err)
+	}
+	got, _ := db.Links().Find(ctx, store.LinkFilter{ID: &l.ID})
+	if got.VisitCount != 31 {
+		t.Fatalf("visit_count %d (routed clicks must still count as Kutt visits)", got.VisitCount)
+	}
+	st, err := db.Routing().RouteStats(ctx, l.ID, time.Now())
+	if err != nil || st.LastDay.Total != 30 || st.LastDay.Stats.Route[0].Name != "ios" || st.LastDay.Stats.Route[0].Value != 20 {
+		t.Fatalf("route stats %+v %v", st.LastDay, err)
+	}
+	if w.RoutesApplied.Load() != 30 || w.RoutesFailed.Load() != 0 {
+		t.Fatalf("counters applied=%d failed=%d", w.RoutesApplied.Load(), w.RoutesFailed.Load())
+	}
+}

@@ -12,7 +12,9 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Field, FieldError, FieldLabel } from "@/components/ui/field"
 import { QRDialog } from "@/components/dialogs"
-import { ApiError, api, invalidateLinks, type CreateLinkInput, type Link } from "@/lib/api"
+import { RoutingEditor } from "@/components/routing-editor"
+import { draftIsEmpty, draftToInput, emptyDraft } from "@/lib/routing"
+import { ApiError, api, invalidateLinks, useMyRouting, type CreateLinkInput, type Link } from "@/lib/api"
 import { copyText, stripProtocol } from "@/lib/format"
 import type { CurrentUser, PublicConfig } from "@/lib/api"
 
@@ -21,6 +23,7 @@ type Errors = Partial<Record<keyof CreateLinkInput | "form", string>>
 /** Map Kutt's single error string back to a field (it only returns the first message). */
 function fieldFor(msg: string): keyof Errors {
   const m = msg.toLowerCase()
+  if (m.includes("routing")) return "routing"
   if (m.includes("custom url") || m.includes("custom address")) return "customurl"
   if (m.includes("password")) return "password"
   if (m.includes("expire")) return "expire_in"
@@ -43,6 +46,10 @@ export function Shortener({ cfg, user }: { cfg: PublicConfig; user: CurrentUser 
   const [pending, setPending] = useState(false)
   const [result, setResult] = useState<Link | null>(null)
   const [qrOpen, setQrOpen] = useState(false)
+  const routingAvailable = !!user && !!cfg.routing_enabled
+  const { data: myRouting } = useMyRouting(routingAvailable && advanced)
+  const [routingOn, setRoutingOn] = useState(false)
+  const [routing, setRouting] = useState(emptyDraft)
 
   const anonymousBlocked = !user && cfg.disallow_anonymous_links
   const domains = [cfg.default_domain, ...(user?.domains ?? []).filter((d) => !d.banned).map((d) => d.address)]
@@ -62,6 +69,8 @@ export function Shortener({ cfg, user }: { cfg: PublicConfig; user: CurrentUser 
       if (expireIn) input.expire_in = expireIn.trim()
       if (description) input.description = description.trim()
       if (domain && domain !== cfg.default_domain) input.domain = domain
+      // Left untouched, the server applies the user's auto-apply defaults (if any).
+      if (routingAvailable && routingOn && !draftIsEmpty(routing)) input.routing = draftToInput(routing)
     }
     try {
       const link = await api.createLink(input)
@@ -71,6 +80,8 @@ export function Shortener({ cfg, user }: { cfg: PublicConfig; user: CurrentUser 
       setPassword("")
       setExpireIn("")
       setDescription("")
+      setRouting(emptyDraft())
+      setRoutingOn(false)
       void invalidateLinks(qc)
       void copyText(link.link, "Short link created and copied")
     } catch (err) {
@@ -242,6 +253,25 @@ export function Shortener({ cfg, user }: { cfg: PublicConfig; user: CurrentUser 
                   />
                   {errors.description && <FieldError>{errors.description}</FieldError>}
                 </Field>
+                {routingAvailable && (
+                  <div className="grid gap-3 rounded-lg border p-3 sm:col-span-2">
+                    <div className="flex items-center justify-between gap-3">
+                      <Label htmlFor="routing-on" className="grid gap-0.5">
+                        <span>Platform routing</span>
+                        <span className="text-xs font-normal text-muted-foreground">
+                          {myRouting?.auto_apply && myRouting.defaults
+                            ? "Your default routing applies unless you set rules here."
+                            : "Send iOS, Android and desktop visitors to different URLs."}
+                        </span>
+                      </Label>
+                      <Switch id="routing-on" checked={routingOn} onCheckedChange={setRoutingOn} />
+                    </div>
+                    {routingOn && (
+                      <RoutingEditor idPrefix="new-routing" value={routing} onChange={setRouting} allowedModes={myRouting?.allowed_modes} />
+                    )}
+                    {errors.routing && <FieldError>{errors.routing}</FieldError>}
+                  </div>
+                )}
                 {!user && (
                   <p className="text-sm text-muted-foreground sm:col-span-2">
                     Domain, custom address and password are available to logged-in users.

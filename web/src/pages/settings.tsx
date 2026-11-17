@@ -1,7 +1,7 @@
 import { useState, type FormEvent, type ReactNode } from "react"
 import { Navigate, useNavigate } from "react-router"
 import { useQueryClient } from "@tanstack/react-query"
-import { Copy, Eye, EyeOff, KeyRound, Plus, Trash2 } from "lucide-react"
+import { Copy, Eye, EyeOff, KeyRound, Plus, Smartphone, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
@@ -13,6 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Input } from "@/components/ui/input"
 import { TextField } from "@/components/controls"
 import { ConfirmDialog } from "@/components/dialogs"
+import { DomainAppsDialog, RoutingDefaultsForm } from "@/components/routing-admin"
 import { ApiError, api, qk, useConfig, useMe, type CurrentUser, type Domain, type PublicConfig } from "@/lib/api"
 import { copyText } from "@/lib/format"
 
@@ -43,6 +44,7 @@ function DomainsSection({ cfg, user }: { cfg: PublicConfig; user: CurrentUser })
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
   const [deleting, setDeleting] = useState<Domain | null>(null)
+  const [apps, setApps] = useState<Domain | null>(null)
 
   const ip = cfg.server_ip_address ? <b className="font-mono">{cfg.server_ip_address}</b> : <>our <b>IP address</b></>
 
@@ -95,7 +97,7 @@ function DomainsSection({ cfg, user }: { cfg: PublicConfig; user: CurrentUser })
               <TableRow>
                 <TableHead>Domain</TableHead>
                 <TableHead>Homepage</TableHead>
-                <TableHead className="w-10">
+                <TableHead className="w-20">
                   <span className="sr-only">Actions</span>
                 </TableHead>
               </TableRow>
@@ -108,9 +110,16 @@ function DomainsSection({ cfg, user }: { cfg: PublicConfig; user: CurrentUser })
                   </TableCell>
                   <TableCell className="max-w-48 truncate text-muted-foreground">{d.homepage}</TableCell>
                   <TableCell>
-                    <Button variant="ghost" size="icon-sm" aria-label={`Delete ${d.address}`} className="text-destructive" onClick={() => setDeleting(d)}>
-                      <Trash2 />
-                    </Button>
+                    <div className="flex justify-end gap-0.5">
+                      {cfg.routing_enabled && (
+                        <Button variant="ghost" size="icon-sm" aria-label={`App links for ${d.address}`} title="App links" onClick={() => setApps(d)}>
+                          <Smartphone />
+                        </Button>
+                      )}
+                      <Button variant="ghost" size="icon-sm" aria-label={`Delete ${d.address}`} className="text-destructive" onClick={() => setDeleting(d)}>
+                        <Trash2 />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
@@ -145,6 +154,7 @@ function DomainsSection({ cfg, user }: { cfg: PublicConfig; user: CurrentUser })
         </div>
       )}
 
+      {apps && <DomainAppsDialog id={apps.id} address={apps.address} open onOpenChange={(o) => !o && setApps(null)} />}
       {deleting && (
         <ConfirmDialog
           open
@@ -375,6 +385,11 @@ export default function SettingsPage() {
         </p>
       </div>
       <DomainsSection cfg={cfg} user={me} />
+      {cfg.routing_enabled && (
+        <Section title="Platform routing" description="Default rules for sending iOS, Android and desktop visitors to different URLs.">
+          <RoutingDefaultsForm />
+        </Section>
+      )}
       <ApiKeySection user={me} />
       <ChangePasswordSection />
       {cfg.mail_enabled && <ChangeEmailSection user={me} />}

@@ -119,6 +119,7 @@ func Run(ctx context.Context, cfg *config.Config, service string, log *slog.Logg
 		DefaultDomain: cfg.DefaultDomain, Links: links, Domains: domains, Finder: st.Links(),
 		Publisher: pub, Geo: geoRes, IPs: cip, IsBot: uaparse.IsBot, ParseUA: uaparse.Parse,
 		Metrics: metrics, SiteName: cfg.SiteName,
+		RoutingEnabled: cfg.RoutingEnabled, SmartTimeout: cfg.RoutingSmartTimeout, Apps: st.Routing(),
 	})
 	base := func(h http.Handler, sample uint64) http.Handler {
 		return httpx.Chain(h, httpx.RequestID, httpx.Observe(metrics, log, cip, sample), httpx.Recover(log), httpx.SecurityHeaders)
@@ -144,6 +145,7 @@ func Run(ctx context.Context, cfg *config.Config, service string, log *slog.Logg
 		apiSrv := api.New(api.Options{
 			Config: cfg, Store: st, Links: links, Domains: domains, Auth: authSvc, OIDC: oidc, Mailer: mailer,
 			Redis: rdb, IPs: cip, Metrics: metrics, Log: log, Mode: mode, Protected: rd.ServeProtected,
+			AppsChanged: rd.InvalidateApps,
 		})
 		mux := http.NewServeMux()
 		apiSrv.Register(mux)
@@ -156,7 +158,8 @@ func Run(ctx context.Context, cfg *config.Config, service string, log *slog.Logg
 			mux.Handle("GET "+p, ui)
 		}
 		mux.HandleFunc("GET /{id}", rd.ServeRedirect)
-		mux.Handle("/", ui) // SPA 404 page for everything else (server.js: app.get("*", notFound))
+		rd.RegisterWellKnown(mux) // app association (deeplink routing mode)
+		mux.Handle("/", ui)       // SPA 404 page for everything else (server.js: app.get("*", notFound))
 		// API responses are gzip'd; redirects/static are not re-compressed.
 		gz := httpx.Gzip(mux)
 		h := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -173,6 +176,7 @@ func Run(ctx context.Context, cfg *config.Config, service string, log *slog.Logg
 		// Standalone redirector: GET /{id}, protected unlock, server-rendered 404/banned, health.
 		mux := http.NewServeMux()
 		rd.Register(mux, true)
+		rd.RegisterWellKnown(mux)
 		for _, p := range []string{"/api/v2/health", "/api/health"} {
 			mux.HandleFunc("GET "+p, api.Health)
 		}

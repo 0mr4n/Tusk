@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react"
 import { Navigate, useSearchParams } from "react-router"
 import { useQueryClient } from "@tanstack/react-query"
-import { Ban, Copy, Lock, Plus, Search, Trash2 } from "lucide-react"
+import { Ban, Copy, Lock, Plus, Search, Smartphone, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 
 import { Badge } from "@/components/ui/badge"
@@ -24,6 +24,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { TablePager, TextField, TriSelect } from "@/components/controls"
+import { RoutingBadge } from "@/components/routing-editor"
+import { DomainAppsDialog, UserRoutingDialog } from "@/components/routing-admin"
 import { ConfirmDialog } from "@/components/dialogs"
 import { LinkActions } from "@/components/link-actions"
 import {
@@ -154,6 +156,7 @@ function AdminLinks({ initialUser, onUserClick }: { initialUser: string; onUserC
                         {stripProtocol(url)}
                       </a>
                       {l.password && <Lock className="size-3.5 shrink-0 text-muted-foreground" aria-label="Password protected" />}
+                      <RoutingBadge routing={l.routing} />
                       {l.banned && <Badge variant="destructive" className="shrink-0">Banned</Badge>}
                     </div>
                   </TableCell>
@@ -297,7 +300,8 @@ function AdminUsers({ initialSearch }: { initialSearch: string }) {
   })
   const [page, setPage] = useState({ limit: 10, skip: 0 })
   const [creating, setCreating] = useState(false)
-  const [target, setTarget] = useState<{ kind: "ban" | "delete"; user: AdminUser } | null>(null)
+  const [target, setTarget] = useState<{ kind: "ban" | "delete" | "routing"; user: AdminUser } | null>(null)
+  const { data: cfg } = useConfig()
   const ds = useDebounced(search)
   const q: AdminUsersQuery = { ...page, search: ds, ...f }
   const { data, isPending, isFetching, error } = useAdminUsers(q)
@@ -369,6 +373,11 @@ function AdminUsers({ initialSearch }: { initialSearch: string }) {
                 <TableCell className="text-right tabular-nums">{formatNumber(u.links_count ?? 0)}</TableCell>
                 <TableCell>
                   <div className="flex justify-end gap-0.5">
+                    {cfg?.routing_enabled && (
+                      <Button variant="ghost" size="icon-sm" aria-label={`Platform routing access for ${u.email}`} title="Platform routing access" onClick={() => setTarget({ kind: "routing", user: u })}>
+                        <Smartphone />
+                      </Button>
+                    )}
                     {!u.banned && u.id !== me?.id && (
                       <Button variant="ghost" size="icon-sm" aria-label={`Ban ${u.email}`} className="text-destructive" onClick={() => setTarget({ kind: "ban", user: u })}>
                         <Ban />
@@ -386,6 +395,9 @@ function AdminUsers({ initialSearch }: { initialSearch: string }) {
       </div>
       {data && <TablePager total={data.total} limit={page.limit} skip={page.skip} onChange={setPage} loading={isFetching} />}
       {creating && <CreateUserDialog open onOpenChange={setCreating} />}
+      {target?.kind === "routing" && (
+        <UserRoutingDialog userId={target.user.id} email={target.user.email} open onOpenChange={(o) => !o && setTarget(null)} />
+      )}
       {target?.kind === "ban" && (
         <ConfirmDialog
           open
@@ -491,6 +503,8 @@ function AdminDomains({ onUserClick }: { onUserClick: (email: string) => void })
   const [page, setPage] = useState({ limit: 10, skip: 0 })
   const [adding, setAdding] = useState(false)
   const [target, setTarget] = useState<{ kind: "ban" | "delete"; domain: AdminDomain } | null>(null)
+  const [apps, setApps] = useState<{ id: string; address: string } | null>(null)
+  const { data: cfg } = useConfig()
   const ds = useDebounced(search)
   const du = useDebounced(user)
   const q: AdminDomainsQuery = { ...page, search: ds, user: du, ...f }
@@ -505,7 +519,12 @@ function AdminDomains({ onUserClick }: { onUserClick: (email: string) => void })
         <TriSelect label="Banned" value={f.banned} onChange={(v) => (setF({ ...f, banned: v as Tri }), reset())} any="Banned..." yes="Banned" no="Not banned" />
         <TriSelect label="Owner" value={f.owner} onChange={(v) => (setF({ ...f, owner: v as Tri }), reset())} any="Owner..." yes="With owner" no="No owner" />
         <TriSelect label="Links" value={f.links} onChange={(v) => (setF({ ...f, links: v as Tri }), reset())} any="Links..." yes="With links" no="No links" />
-        <Button size="sm" className="ml-auto" onClick={() => setAdding(true)}>
+        {cfg?.routing_enabled && (
+          <Button size="sm" variant="outline" className="ml-auto" onClick={() => setApps({ id: "default", address: cfg.default_domain })}>
+            <Smartphone /> App links ({cfg.default_domain})
+          </Button>
+        )}
+        <Button size="sm" className={cfg?.routing_enabled ? undefined : "ml-auto"} onClick={() => setAdding(true)}>
           <Plus /> Add domain
         </Button>
       </div>
@@ -554,6 +573,11 @@ function AdminDomains({ onUserClick }: { onUserClick: (email: string) => void })
                 <TableCell className="text-right tabular-nums">{formatNumber(d.links_count ?? 0)}</TableCell>
                 <TableCell>
                   <div className="flex justify-end gap-0.5">
+                    {cfg?.routing_enabled && (
+                      <Button variant="ghost" size="icon-sm" aria-label={`App links for ${d.address}`} title="App links" onClick={() => setApps({ id: d.uuid, address: d.address })}>
+                        <Smartphone />
+                      </Button>
+                    )}
                     {!d.banned && (
                       <Button variant="ghost" size="icon-sm" aria-label={`Ban ${d.address}`} className="text-destructive" onClick={() => setTarget({ kind: "ban", domain: d })}>
                         <Ban />
@@ -571,6 +595,7 @@ function AdminDomains({ onUserClick }: { onUserClick: (email: string) => void })
       </div>
       {data && <TablePager total={data.total} limit={page.limit} skip={page.skip} onChange={setPage} loading={isFetching} />}
       {adding && <AddDomainDialog open onOpenChange={setAdding} />}
+      {apps && <DomainAppsDialog id={apps.id} address={apps.address} open onOpenChange={(o) => !o && setApps(null)} />}
       {target?.kind === "ban" && (
         <ConfirmDialog
           open

@@ -40,6 +40,71 @@ export interface PublicConfig {
   server_cname_address: string
   /** TUSK EXTENSION (optional): true when the users table is empty → /create-admin. */
   needs_admin_setup?: boolean
+  /** TUSK EXTENSION: platform routing (ROUTING_ENABLED) — docs/UNIVERSAL-LINKS.md. */
+  routing_enabled?: boolean
+  routing_smart_timeout_ms?: number
+}
+
+// --- Platform routing (TUSK EXTENSION, docs/UNIVERSAL-LINKS.md) ---
+
+export type RoutingMode = "redirect" | "deeplink" | "smart"
+export type RoutingPlatform = "ios" | "android" | "desktop"
+export const ROUTING_MODES: RoutingMode[] = ["redirect", "deeplink", "smart"]
+export const ROUTING_PLATFORMS: RoutingPlatform[] = ["ios", "android", "desktop"]
+
+export interface RouteRule {
+  enabled: boolean
+  url: string
+  app_url: string | null
+}
+
+export interface Routing {
+  enabled: boolean
+  mode: RoutingMode
+  rules: Partial<Record<RoutingPlatform, RouteRule>>
+}
+
+/** Write shape: app_url may be omitted. */
+export interface RoutingInput {
+  enabled?: boolean
+  mode: RoutingMode
+  rules: Partial<Record<RoutingPlatform, { enabled?: boolean; url: string; app_url?: string | null } | null>>
+}
+
+export interface RoutePeriodStats {
+  total: number
+  views: number[]
+  stats: { route: StatItem[]; os: StatItem[]; device: StatItem[] }
+}
+
+export type RouteStats = Record<Period, RoutePeriodStats> & { updatedAt: string; id: string; routing: Routing | null }
+
+export interface UserRouting {
+  enabled: boolean
+  allowed_modes: RoutingMode[]
+  defaults: Routing | null
+  auto_apply: boolean
+  /** admin view only: null = instance default (ROUTING_DEFAULT_MODES) */
+  allowed_modes_override?: RoutingMode[] | null
+  disabled_links?: number
+}
+
+export interface DomainApps {
+  domain: string
+  ios_app_ids: string[]
+  android_package: string
+  android_sha256: string[]
+  paths: string[]
+  updated_at: string
+  aasa_url: string
+  assetlinks_url: string
+}
+
+export interface DomainAppsInput {
+  ios_app_ids: string[]
+  android_package: string
+  android_sha256: string[]
+  paths: string[]
 }
 
 export type Role = "ADMIN" | "USER"
@@ -79,6 +144,8 @@ export interface Link {
   domain: string | null
   /** full short URL, e.g. https://kutt.it/abc */
   link: string
+  /** TUSK EXTENSION: present only on links with platform routing. */
+  routing?: Routing
 }
 
 /** sanitize.link_admin (JSON variant) — adds owner email; domain defaults to DEFAULT_DOMAIN. */
@@ -149,6 +216,8 @@ export interface CreateLinkInput {
   description?: string
   domain?: string
   reuse?: boolean
+  /** TUSK EXTENSION: null opts out of the user's auto-applied defaults. */
+  routing?: RoutingInput | null
 }
 
 export interface EditLinkInput {
@@ -157,6 +226,8 @@ export interface EditLinkInput {
   password?: string
   expire_in?: string
   description?: string
+  /** TUSK EXTENSION: null removes routing. */
+  routing?: RoutingInput | null
 }
 
 export interface BanLinkInput {
@@ -203,7 +274,7 @@ function qs(params?: Query): string {
 }
 
 export async function request<T>(
-  method: "GET" | "POST" | "PATCH" | "DELETE",
+  method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE",
   path: string,
   opts: { body?: unknown; query?: Query; signal?: AbortSignal } = {},
 ): Promise<T> {
@@ -303,6 +374,23 @@ export const api = {
     request<{ message: string }>("DELETE", `/domains/admin/${id}`, { query: { links } }),
   banDomain: (id: number, input: { links?: boolean; user?: boolean }) =>
     request<{ message: string }>("POST", `/domains/admin/ban/${id}`, { body: input }),
+
+  // platform routing (TUSK EXTENSION)
+  linkRouting: (id: string) => request<Routing>("GET", `/links/${id}/routing`),
+  putLinkRouting: (id: string, input: RoutingInput) => request<Routing>("PUT", `/links/${id}/routing`, { body: input }),
+  patchLinkRouting: (id: string, input: Partial<RoutingInput>) => request<Routing>("PATCH", `/links/${id}/routing`, { body: input }),
+  deleteLinkRouting: (id: string) => request<{ message: string }>("DELETE", `/links/${id}/routing`),
+  routeStats: (id: string, signal?: AbortSignal) => request<RouteStats>("GET", `/links/${id}/routing/stats`, { signal }),
+  myRouting: (signal?: AbortSignal) => request<UserRouting>("GET", "/users/routing", { signal }),
+  putMyRouting: (input: { defaults?: RoutingInput | null; auto_apply?: boolean }) =>
+    request<UserRouting>("PUT", "/users/routing", { body: input }),
+  userRoutingAdmin: (id: number, signal?: AbortSignal) => request<UserRouting>("GET", `/users/admin/${id}/routing`, { signal }),
+  patchUserRoutingAdmin: (id: number, allowed_modes: RoutingMode[] | null) =>
+    request<UserRouting>("PATCH", `/users/admin/${id}/routing`, { body: { allowed_modes } }),
+  /** id: a domain uuid, or "default" (admins) for DEFAULT_DOMAIN. */
+  domainApps: (id: string, signal?: AbortSignal) => request<DomainApps>("GET", `/domains/${id}/apps`, { signal }),
+  putDomainApps: (id: string, input: DomainAppsInput) => request<DomainApps>("PUT", `/domains/${id}/apps`, { body: input }),
+  deleteDomainApps: (id: string) => request<{ message: string }>("DELETE", `/domains/${id}/apps`),
 }
 
 export type Tri = "" | "true" | "false"
@@ -351,6 +439,10 @@ export const qk = {
   adminLinks: (q: object) => ["admin", "links", q] as const,
   adminUsers: (q: object) => ["admin", "users", q] as const,
   adminDomains: (q: object) => ["admin", "domains", q] as const,
+  routeStats: (id: string) => ["routeStats", id] as const,
+  myRouting: ["myRouting"] as const,
+  userRouting: (id: number) => ["admin", "userRouting", id] as const,
+  domainApps: (id: string) => ["domainApps", id] as const,
 }
 
 const FALLBACK_CONFIG: PublicConfig = {
@@ -460,5 +552,35 @@ export function useApiMutation<TVars, TData>(
       await Promise.all((opts.invalidate ?? []).map((k) => qc.invalidateQueries({ queryKey: k })))
       opts.onSuccess?.(d, v)
     },
+  })
+}
+
+export function useRouteStats(id: string, enabled: boolean) {
+  return useQuery({
+    queryKey: qk.routeStats(id),
+    queryFn: ({ signal }) => api.routeStats(id, signal),
+    enabled: !!id && enabled,
+    retry: false,
+  })
+}
+
+export function useMyRouting(enabled = true) {
+  return useQuery({ queryKey: qk.myRouting, queryFn: ({ signal }) => api.myRouting(signal), enabled, retry: false })
+}
+
+/** Domain app association; resolves to null when not configured (404). */
+export function useDomainApps(id: string, enabled = true) {
+  return useQuery({
+    queryKey: qk.domainApps(id),
+    queryFn: async ({ signal }) => {
+      try {
+        return await api.domainApps(id, signal)
+      } catch (e) {
+        if (e instanceof ApiError && e.status === 404) return null
+        throw e
+      }
+    },
+    enabled,
+    retry: false,
   })
 }

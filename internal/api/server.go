@@ -63,6 +63,9 @@ type Options struct {
 	// Protected, when set, is mounted at POST /api{,/v2}/links/{id}/protected
 	// (the redirect package's handler).
 	Protected http.HandlerFunc
+	// AppsChanged, when set, is called after a domain's app association changes
+	// (in-process redirector cache; domainID 0 = default domain).
+	AppsChanged func(domainID int64)
 	// NeedsAdmin caches "no user exists" for /config (optional).
 }
 
@@ -154,11 +157,25 @@ func (s *Server) register(mux *http.ServeMux, p string) {
 	hf("GET /links/admin", s.getLinksAdmin)
 	hf("POST /links", s.createLink)
 	hf("PATCH /links/{id}", s.editLink)
-	hf("PATCH /links/admin/{id}", s.editLinkAdmin)
+	// PATCH /links/admin/{id} and PATCH /links/{id}/routing overlap for ServeMux
+	// (/links/admin/routing), so one pattern dispatches both.
+	hf("PATCH /links/{id}/{sub}", s.adminOrSub(s.editLinkAdmin, "routing", s.patchLinkRouting))
 	hf("DELETE /links/{id}", s.removeLink)
 	hf("POST /links/admin/ban/{id}", s.banLink)
 	hf("GET /links/{id}/stats", s.linkStats)
 	hf("POST /links/report", s.reportLink)
+	// Platform routing (Tusk extension, docs/UNIVERSAL-LINKS.md §8)
+	hf("GET /links/{id}/routing", s.getLinkRouting)
+	hf("PUT /links/{id}/routing", s.putLinkRouting)
+	hf("DELETE /links/{id}/routing", s.deleteLinkRouting)
+	hf("GET /links/{id}/routing/stats", s.linkRoutingStats)
+	hf("GET /users/routing", s.getMyRouting)
+	hf("PUT /users/routing", s.putMyRouting)
+	hf("GET /users/admin/{id}/routing", s.getUserRoutingAdmin)
+	hf("PATCH /users/admin/{id}/routing", s.patchUserRoutingAdmin)
+	hf("GET /domains/{id}/apps", s.getDomainApps)
+	hf("PUT /domains/{id}/apps", s.putDomainApps)
+
 	if s.o.Protected != nil {
 		mux.HandleFunc("POST "+p+"/links/{id}/protected", s.o.Protected)
 	}
@@ -174,8 +191,26 @@ func (s *Server) register(mux *http.ServeMux, p string) {
 	hf("POST /domains", s.addDomain)
 	hf("POST /domains/admin", s.addDomainAdmin)
 	hf("DELETE /domains/{id}", s.removeDomain)
-	hf("DELETE /domains/admin/{id}", s.removeDomainAdmin)
+	hf("DELETE /domains/{id}/{sub}", s.adminOrSub(s.removeDomainAdmin, "apps", s.deleteDomainApps))
 	hf("POST /domains/admin/ban/{id}", s.banDomain)
+}
+
+// adminOrSub serves "/x/{id}/{sub}" patterns that ServeMux would otherwise
+// report as conflicting: "/x/admin/{id}" goes to admin (with {id} = the second
+// segment), "/x/{id}/<name>" goes to sub, anything else is a 404.
+func (s *Server) adminOrSub(admin handlerFunc, name string, sub handlerFunc) handlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) error {
+		id, rest := r.PathValue("id"), r.PathValue("sub")
+		switch {
+		case id == "admin":
+			r.SetPathValue("id", rest)
+			return admin(w, r)
+		case rest == name:
+			return sub(w, r)
+		}
+		writeError(w, http.StatusNotFound, "Not found.")
+		return nil
+	}
 }
 
 // Health is GET /api/v2/health: res.send("OK").

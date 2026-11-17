@@ -68,16 +68,29 @@ func (h *Handler) ServeProtected(w http.ResponseWriter, r *http.Request) {
 		fail(http.StatusUnauthorized, msgWrongPassword)
 		return
 	}
+	// Platform routing applies after the unlock (docs/UNIVERSAL-LINKS.md §1).
+	ua := r.Header.Get("User-Agent")
+	dest := l.Target
+	var routed *choice
+	if h.o.RoutingEnabled {
+		if t, err := h.o.Links.Resolve(r.Context(), l.Address, l.DomainID); err == nil && t != nil && t.LinkID == l.ID {
+			dest, routed = h.routedTarget(t, ua)
+		}
+	}
 	// Kutt records the visit here without an isbot check (links.handler.js:565).
 	if l.UserID != nil {
-		h.publish(r, l.ID, l.UserID, r.Header.Get("User-Agent"))
+		if routed != nil {
+			h.publishRouted(r, l.ID, l.UserID, ua, routed)
+		} else {
+			h.publish(r, l.ID, l.UserID, ua)
+		}
 	}
 	h.count("protected_ok")
 	if html {
-		redirect302(w, l.Target)
+		redirect302(w, dest)
 		return
 	}
-	writeJSONTarget(w, http.StatusOK, l.Target)
+	writeJSONTarget(w, http.StatusOK, dest)
 }
 
 // readPassword reads "password" from a JSON or form body.

@@ -52,12 +52,19 @@ type Options struct {
 	// ShortURL renders the short link for the info page (utils.getShortURL().link).
 	SiteName string
 	Now      func() time.Time
+
+	// Platform routing (docs/UNIVERSAL-LINKS.md). RoutingEnabled = ROUTING_ENABLED;
+	// off means routed links behave exactly like plain Kutt links.
+	RoutingEnabled bool
+	SmartTimeout   time.Duration // ROUTING_SMART_TIMEOUT
+	Apps           AppsSource    // nil: no app association files (404)
 }
 
 // Handler serves the redirect routes.
 type Handler struct {
 	o     Options
 	pages *pages
+	apps  appsCache
 }
 
 // New builds a Handler.
@@ -73,6 +80,9 @@ func New(o Options) *Handler {
 	}
 	if o.SiteName == "" {
 		o.SiteName = "Kutt"
+	}
+	if o.SmartTimeout <= 0 {
+		o.SmartTimeout = 1500 * time.Millisecond
 	}
 	return &Handler{o: o, pages: newPages(o.SiteName)}
 }
@@ -244,13 +254,25 @@ func (h *Handler) ServeRedirect(w http.ResponseWriter, r *http.Request) {
 		if pw, ok := basicPassword(r); ok {
 			if l, err := h.o.Finder.Find(ctx, store.LinkFilter{ID: &t.LinkID}); err == nil && l != nil && l.Password != nil &&
 				bcrypt.CompareHashAndPassword([]byte(*l.Password), trunc72(pw)) == nil {
+				dest, _ := h.routedTarget(t, r.Header.Get("User-Agent"))
 				h.count("target")
-				redirect302(w, t.Target)
+				redirect302(w, dest)
 				return
 			}
 		}
 		h.count("protected")
 		h.pages.protected(w, http.StatusOK, t.UUID, "")
+		return
+	}
+	if t.Routing != nil && h.routingActive(t) {
+		// Bots (link previews, crawlers) always get the plain target and no visit.
+		ua := r.Header.Get("User-Agent")
+		if !h.o.IsBot(ua) {
+			h.serveRouted(w, r, t, ua)
+			return
+		}
+		h.count("target")
+		redirect302(w, t.Target)
 		return
 	}
 	if t.UserID != nil {
@@ -264,10 +286,20 @@ func (h *Handler) ServeRedirect(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) publish(r *http.Request, linkID int64, userID *int64, ua string) {
+	h.publishEvent(r, linkID, userID, ua, nil)
+}
+
+// publishEvent builds and publishes a visit event; c (optional) adds the
+// platform-routing fields (event V2).
+func (h *Handler) publishEvent(r *http.Request, linkID int64, userID *int64, ua string, c *choice) {
 	if h.o.Publisher == nil {
 		return
 	}
 	ev := domain.VisitEvent{V: 1, LinkID: linkID, UserID: userID, Timestamp: h.o.Now().UTC()}
+	if c != nil {
+		ev.V = 2
+		ev.Route, ev.PlatformOS, ev.Device = c.route, c.pi.OS, c.pi.Device
+	}
 	ev.Browser, ev.OS = h.o.ParseUA(ua)
 	if h.o.Geo != nil {
 		var hg domain.HeaderGetter = r.Header

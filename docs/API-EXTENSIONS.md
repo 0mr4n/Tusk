@@ -26,3 +26,23 @@ are unaffected.
 - `reuse:"false"` (string) counts as false. Kutt tests the raw value for truthiness.
 - Mail text bodies use the correct sentences. Kutt's mail/text.js:1-11 swaps the verify and change-email texts.
 - Every service answers `GET /api/v2/health` and `GET /api/health` with `OK`. Prometheus metrics are served on `METRICS_PORT` at `/metrics`.
+
+## Platform routing (universal links)
+
+Full design: [UNIVERSAL-LINKS.md](UNIVERSAL-LINKS.md). All routes exist under `/api/v2` and `/api`.
+
+| Method & path | Auth | Notes |
+|---|---|---|
+| `POST /links`, `PATCH /links/{id}` | user | Optional `routing` object; `null` removes it (or, on create, skips the user's auto-applied defaults). A routing-only `PATCH` counts as a change. |
+| `GET /links`, `GET /links/admin`, link responses, `GET /links/{id}/stats` | user | `routing` key appears only on links that have routing; other links are byte-identical to Kutt. |
+| `GET` / `PUT` / `PATCH` / `DELETE /links/{id}/routing` | owner / admin | `PATCH` merges: absent fields are kept, a rule set to `null` is removed. |
+| `GET /links/{id}/routing/stats` | owner / admin | Kutt stats envelope with `stats: {route, os, device}` per period. |
+| `GET` / `PUT /users/routing` | user | `{enabled, allowed_modes, defaults, auto_apply}`. |
+| `GET` / `PATCH /users/admin/{id}/routing` | admin | `{allowed_modes: [...] \| null}`; revoking a mode turns routing off on that user's affected links (`disabled_links`). |
+| `GET` / `PUT` / `DELETE /domains/{id}/apps` | owner / admin | App association; `{id}` is a domain uuid or `default` (admin). |
+| `GET /.well-known/apple-app-site-association`, `/apple-app-site-association`, `/.well-known/assetlinks.json` | none | Per `Host`; 404 when not configured. |
+| `GET /config` | none | Adds `routing_enabled`, `routing_smart_timeout_ms`. |
+
+Routing object: `{"enabled": bool, "mode": "redirect"|"deeplink"|"smart", "rules": {"ios"|"android"|"desktop": {"enabled": bool, "url": "https://…", "app_url": "myapp://…"|null}}}`. Rule `url`s must be http(s) and pass the same checks as targets (length, banned hosts, not the default domain); `app_url` rejects `javascript:`, `data:`, `file:`, etc. Errors are Kutt-style `{error}` with 400, 403 (`Routing mode not allowed.`) or 404.
+
+`PATCH /links/admin/{id}` and `DELETE /domains/admin/{id}` are now served through a shared `{id}/{sub}` pattern (Go's ServeMux rejects the overlap with `/links/{id}/routing` and `/domains/{id}/apps`); behaviour is unchanged.

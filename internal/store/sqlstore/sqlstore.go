@@ -48,12 +48,14 @@ type DB struct {
 	d  dialect
 
 	rebindCache sync.Map // string -> string (postgres only)
+	tusk        tuskState
 
 	links   *linkStore
 	users   *userStore
 	domains *domainStore
 	hosts   *hostStore
 	visits  *visitStore
+	routing *routingStore
 }
 
 var _ store.Store = (*DB)(nil)
@@ -143,6 +145,7 @@ func openDSN(ctx context.Context, d dialect, driver, dsn string, poolMin, poolMa
 	s.domains = &domainStore{s}
 	s.hosts = &hostStore{s}
 	s.visits = &visitStore{s}
+	s.routing = &routingStore{s}
 	return s, nil
 }
 
@@ -196,6 +199,9 @@ func (s *DB) Users() store.UserStore     { return s.users }
 func (s *DB) Domains() store.DomainStore { return s.domains }
 func (s *DB) Hosts() store.HostStore     { return s.hosts }
 func (s *DB) Visits() store.VisitStore   { return s.visits }
+func (s *DB) Routing() store.RoutingStore {
+	return s.routing
+}
 func (s *DB) Ping(ctx context.Context) error {
 	return s.db.PingContext(ctx)
 }

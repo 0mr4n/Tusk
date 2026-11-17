@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from "react"
 import { useQueryClient } from "@tanstack/react-query"
+import { ChevronDown, Smartphone } from "lucide-react"
 import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
@@ -13,8 +14,11 @@ import {
 } from "@/components/ui/dialog"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { TextField } from "@/components/controls"
-import { ApiError, api, invalidateLinks, type EditLinkInput } from "@/lib/api"
+import { RoutingEditor } from "@/components/routing-editor"
+import { MODE_INFO, draftIsEmpty, draftToInput, routingToDraft } from "@/lib/routing"
+import { ApiError, api, invalidateLinks, useConfig, useMyRouting, type EditLinkInput, type Routing } from "@/lib/api"
 import { msLong, stripProtocol } from "@/lib/format"
+import { cn } from "@/lib/utils"
 
 const PASSWORD_MASK = "••••••••"
 
@@ -26,6 +30,7 @@ export interface EditableLink {
   expire_in: string | null
   password: boolean
   link: string
+  routing?: Routing
 }
 
 export function EditLinkDialog({
@@ -47,6 +52,12 @@ export function EditLinkDialog({
   const [expireIn, setExpireIn] = useState(msLong(link.expire_in))
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
+  const { data: cfg } = useConfig()
+  const routingAvailable = !!cfg?.routing_enabled || !!link.routing
+  const { data: myRouting } = useMyRouting(routingAvailable && !admin)
+  const [routingOpen, setRoutingOpen] = useState(!!link.routing)
+  const [routing, setRouting] = useState(() => routingToDraft(link.routing))
+  const [routingTouched, setRoutingTouched] = useState(false)
 
   const submit = async (e: FormEvent) => {
     e.preventDefault()
@@ -54,6 +65,14 @@ export function EditLinkDialog({
     setError(null)
     // Kutt semantics: an empty password removes it; the untouched mask keeps it.
     const input: EditLinkInput = { target, address, description, expire_in: expireIn, password }
+    // Only send routing when it was edited, so Kutt-style edits stay unchanged.
+    if (routingTouched) {
+      if (draftIsEmpty(routing)) {
+        if (link.routing) input.routing = null
+      } else {
+        input.routing = draftToInput(routing)
+      }
+    }
     try {
       await (admin ? api.adminEditLink(link.id, input) : api.editLink(link.id, input))
       await invalidateLinks(qc)
@@ -68,7 +87,7 @@ export function EditLinkDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-lg">
         <form onSubmit={submit} className="grid gap-4" noValidate>
           <DialogHeader>
             <DialogTitle>Edit link</DialogTitle>
@@ -91,6 +110,56 @@ export function EditLinkDialog({
             <TextField id="edit-expire" label="Expire in" placeholder="2 minutes/hours/days" value={expireIn} onChange={(e) => setExpireIn(e.target.value)} />
             <TextField id="edit-description" label="Description" placeholder="Description..." value={description} onChange={(e) => setDescription(e.target.value)} />
           </div>
+          {routingAvailable && (
+            <section className="rounded-lg border">
+              <button
+                type="button"
+                className="flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left text-sm font-medium"
+                aria-expanded={routingOpen}
+                aria-controls="edit-routing"
+                onClick={() => setRoutingOpen((o) => !o)}
+              >
+                <span className="flex items-center gap-2">
+                  <Smartphone className="size-4 text-muted-foreground" aria-hidden />
+                  Platform routing
+                  {link.routing && (
+                    <span className="font-normal text-muted-foreground">
+                      · {MODE_INFO[link.routing.mode].label}
+                      {link.routing.enabled ? "" : " (off)"}
+                    </span>
+                  )}
+                </span>
+                <ChevronDown className={cn("size-4 transition-transform", routingOpen && "rotate-180")} aria-hidden />
+              </button>
+              {routingOpen && (
+                <div id="edit-routing" className="grid gap-3 border-t p-3">
+                  <RoutingEditor
+                    idPrefix="edit-routing"
+                    value={routing}
+                    allowedModes={admin ? undefined : myRouting?.allowed_modes}
+                    onChange={(d) => {
+                      setRouting(d)
+                      setRoutingTouched(true)
+                    }}
+                  />
+                  {link.routing && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="w-fit text-destructive"
+                      onClick={() => {
+                        setRouting(routingToDraft(null))
+                        setRoutingTouched(true)
+                      }}
+                    >
+                      Clear all rules (removes routing on save)
+                    </Button>
+                  )}
+                </div>
+              )}
+            </section>
+          )}
           {error && (
             <Alert variant="destructive">
               <AlertDescription>{error}</AlertDescription>

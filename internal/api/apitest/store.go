@@ -27,14 +27,21 @@ type Store struct {
 	domains []*domain.Domain
 	hosts   []*domain.Host
 	Visits  map[int64]*store.Stats // canned stats per link id
-	nextID  int64
+	// Platform routing (tusk_* tables).
+	routing      map[int64]*domain.Routing
+	userRouting  map[int64]*domain.UserRouting
+	domainApps   map[int64]*domain.DomainApps
+	RouteStatsFn func(linkID int64) *store.RouteStats // canned route stats
+	RouteDeltas  []store.RouteDelta                   // recorded ApplyRouteDeltas input
+	nextID       int64
 	// BcryptCost for link passwords (tests use 4 for speed).
 	BcryptCost int
 }
 
 // New returns an empty store with a fixed clock.
 func New(now time.Time) *Store {
-	return &Store{Now: func() time.Time { return now }, Visits: map[int64]*store.Stats{}, BcryptCost: 4}
+	return &Store{Now: func() time.Time { return now }, Visits: map[int64]*store.Stats{}, BcryptCost: 4,
+		routing: map[int64]*domain.Routing{}, userRouting: map[int64]*domain.UserRouting{}, domainApps: map[int64]*domain.DomainApps{}}
 }
 
 func (s *Store) id() int64 { s.nextID++; return s.nextID }
@@ -43,6 +50,7 @@ func (s *Store) Links() store.LinkStore        { return (*links)(s) }
 func (s *Store) Users() store.UserStore        { return (*users)(s) }
 func (s *Store) Domains() store.DomainStore    { return (*domains)(s) }
 func (s *Store) Hosts() store.HostStore        { return (*hosts)(s) }
+func (s *Store) Routing() store.RoutingStore   { return (*routingStore)(s) }
 func (s *Store) Migrate(context.Context) error { return nil }
 func (s *Store) Ping(context.Context) error    { return nil }
 func (s *Store) Close() error                  { return nil }
@@ -450,6 +458,7 @@ func (l *links) Remove(_ context.Context, f store.LinkFilter) (bool, error) {
 	for i, x := range l.links {
 		if l.match(x, f) {
 			l.links = append(l.links[:i], l.links[i+1:]...)
+			delete(l.routing, x.ID)
 			return true, nil
 		}
 	}
@@ -465,8 +474,12 @@ func (l *links) Resolve(_ context.Context, address string, domainID *int64) (*do
 	defer l.mu.Unlock()
 	for _, x := range l.links {
 		if x.Address == address && ((domainID == nil && x.DomainID == nil) || (domainID != nil && x.DomainID != nil && *x.DomainID == *domainID)) {
-			return &domain.RedirectTarget{LinkID: x.ID, UUID: x.UUID, UserID: cp(x.UserID), Target: x.Target,
-				Banned: x.Banned, HasPassword: x.Password != nil, ExpireIn: cp(x.ExpireIn)}, nil
+			t := &domain.RedirectTarget{LinkID: x.ID, UUID: x.UUID, UserID: cp(x.UserID), Target: x.Target,
+				Banned: x.Banned, HasPassword: x.Password != nil, ExpireIn: cp(x.ExpireIn)}
+			if r := l.routing[x.ID]; r != nil && r.Enabled {
+				t.Routing = cloneRouting(r)
+			}
+			return t, nil
 		}
 	}
 	return nil, domain.ErrNotFound
@@ -780,3 +793,157 @@ func (r *Resolver) DomainInvalidations() []string {
 	defer r.mu.Unlock()
 	return append([]string(nil), r.DomainInvalid...)
 }
+
+// ---------- platform routing ----------
+
+type routingStore Store
+
+func cloneRouting(r *domain.Routing) *domain.Routing {
+	if r == nil {
+		return nil
+	}
+	c := *r
+	c.Rules = make(map[domain.Platform]domain.RouteRule, len(r.Rules))
+	for k, v := range r.Rules {
+		c.Rules[k] = v
+	}
+	return &c
+}
+
+func (r *routingStore) linkExists(id int64) bool {
+	for _, x := range r.links {
+		if x.ID == id {
+			return true
+		}
+	}
+	return false
+}
+
+func (r *routingStore) Get(_ context.Context, linkID int64) (*domain.Routing, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if x := r.routing[linkID]; x != nil {
+		return cloneRouting(x), nil
+	}
+	return nil, domain.ErrNotFound
+}
+
+func (r *routingStore) GetMany(_ context.Context, ids []int64) (map[int64]*domain.Routing, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	out := map[int64]*domain.Routing{}
+	for _, id := range ids {
+		if x := r.routing[id]; x != nil {
+			out[id] = cloneRouting(x)
+		}
+	}
+	return out, nil
+}
+
+func (r *routingStore) Put(_ context.Context, linkID int64, x domain.Routing) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if !r.linkExists(linkID) {
+		return domain.ErrNotFound
+	}
+	r.routing[linkID] = cloneRouting(&x)
+	return nil
+}
+
+func (r *routingStore) Delete(_ context.Context, linkID int64) (bool, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	_, ok := r.routing[linkID]
+	delete(r.routing, linkID)
+	return ok, nil
+}
+
+func (r *routingStore) DisableModes(_ context.Context, userID int64, allowed []domain.RoutingMode) ([]store.LinkKey, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	var keys []store.LinkKey
+	for _, l := range r.links {
+		x := r.routing[l.ID]
+		if x == nil || !x.Enabled || l.UserID == nil || *l.UserID != userID {
+			continue
+		}
+		ok := false
+		for _, m := range allowed {
+			ok = ok || m == x.Mode
+		}
+		if !ok {
+			x.Enabled = false
+			keys = append(keys, store.LinkKey{Address: l.Address, DomainID: cp(l.DomainID)})
+		}
+	}
+	return keys, nil
+}
+
+func (r *routingStore) GetUser(_ context.Context, userID int64) (*domain.UserRouting, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if u := r.userRouting[userID]; u != nil {
+		c := *u
+		c.Defaults = cloneRouting(u.Defaults)
+		return &c, nil
+	}
+	return &domain.UserRouting{UserID: userID}, nil
+}
+
+func (r *routingStore) PutUser(_ context.Context, u domain.UserRouting) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	u.Defaults = cloneRouting(u.Defaults)
+	r.userRouting[u.UserID] = &u
+	return nil
+}
+
+func (r *routingStore) GetDomainApps(_ context.Context, id int64) (*domain.DomainApps, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if a := r.domainApps[id]; a != nil {
+		c := *a
+		return &c, nil
+	}
+	return nil, domain.ErrNotFound
+}
+
+func (r *routingStore) PutDomainApps(_ context.Context, a domain.DomainApps) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.domainApps[a.DomainID] = &a
+	return nil
+}
+
+func (r *routingStore) DeleteDomainApps(_ context.Context, id int64) (bool, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	_, ok := r.domainApps[id]
+	delete(r.domainApps, id)
+	return ok, nil
+}
+
+func (r *routingStore) ApplyRouteDeltas(_ context.Context, d []store.RouteDelta) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.RouteDeltas = append(r.RouteDeltas, d...)
+	return nil
+}
+
+func (r *routingStore) RouteStats(_ context.Context, linkID int64, now time.Time) (*store.RouteStats, error) {
+	if r.RouteStatsFn != nil {
+		if st := r.RouteStatsFn(linkID); st != nil {
+			return st, nil
+		}
+	}
+	p := func(n int) store.RoutePeriod {
+		return store.RoutePeriod{Views: make([]int64, n), Stats: store.RouteBuckets{
+			Route:  zeroes("ios", "android", "desktop", "fallback"),
+			OS:     zeroes("ios", "ipados", "android", "windows", "macos", "linux", "chromeos", "other"),
+			Device: zeroes("mobile", "tablet", "desktop", "other"),
+		}}
+	}
+	return &store.RouteStats{LastDay: p(24), LastWeek: p(7), LastMonth: p(30), LastYear: p(12), UpdatedAt: now}, nil
+}
+
+func (r *routingStore) SweepOrphans(context.Context) (int64, error) { return 0, nil }

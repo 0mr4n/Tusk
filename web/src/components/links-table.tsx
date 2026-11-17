@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { TablePager } from "@/components/controls"
+import { RoutingBadge } from "@/components/routing-editor"
 import { LinkActions } from "@/components/link-actions"
 import { isAdmin, useLinks, useMe } from "@/lib/api"
 import { copyText, formatNumber, msLong, relativeTime, stripProtocol, useDebounced } from "@/lib/format"
@@ -100,6 +101,7 @@ export function LinksTable() {
                           {stripProtocol(l.link)}
                         </a>
                         {l.password && <Lock className="size-3.5 shrink-0 text-muted-foreground" aria-label="Password protected" />}
+                        <RoutingBadge routing={l.routing} />
                         {l.banned && <Badge variant="destructive" className="shrink-0">Banned</Badge>}
                       </div>
                       {/* Mobile: the target lives under the short link (Original URL column is hidden). */}

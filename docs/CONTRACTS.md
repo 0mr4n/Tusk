@@ -51,3 +51,9 @@ The SPA (`web/src/lib/api.ts`, the single typed client) talks only to `/api/v2` 
 - [B] internal/config: `SITE_URL`/`NODE_ENV` field — auth.Mode is derived from `NODE_ENV` (envalid: unset ⇒ production) in internal/auth because config has no field for it. Promote it to config so every package agrees.
 - [B] internal/cache (A): consider exporting `LinkResolver` hit/miss as Prometheus collectors. cmd wires `Hits`/`Misses` atomics as CounterFuncs (`tusk_link_cache_{hits,misses}_total`) for now.
 - [B] internal/webui (C): `GET /404` and `GET /banned` on the main domain are answered by the SPA. The standalone redirector serves server-rendered versions (internal/redirect/templates).
+
+## Platform routing (docs/UNIVERSAL-LINKS.md)
+
+- [orchestrator] internal/domain: `Routing`, `RouteRule`, `RoutingMode`, `Platform`, `UserRouting`, `DomainApps`; `RedirectTarget.Routing` (omitempty, cached); `VisitEvent` V2 fields `route`/`pos`/`dev` (omitempty, ignored by V1 workers).
+- [orchestrator] internal/store: `Store.Routing() RoutingStore` over additive `tusk_*` tables with their own `tusk_migrations` ledger. Kutt tables and `knex_migrations` are never altered. `LinkStore.Resolve` LEFT JOINs `tusk_link_routing` once the tables exist; before that (redirector/worker started ahead of the api role) it uses the original query.
+- [B] internal/api: `Options.AppsChanged` lets the in-process redirector drop its app-association cache on save; split-mode redirectors pick changes up within 10 s (not configured) / 60 s (configured).

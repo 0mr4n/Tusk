@@ -63,9 +63,14 @@ func (s *Server) getLinks(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
+	ids := make([]int64, len(links))
+	for i := range links {
+		ids[i] = links[i].ID
+	}
+	rts := s.routingFor(ctx, ids)
 	data := make([]obj, 0, len(links))
 	for i := range links {
-		data = append(data, s.linkJSON(&links[i], true))
+		data = append(data, withRouting(s.linkJSON(&links[i], true), rts[links[i].ID]))
 	}
 	writeJSON(w, http.StatusOK, page(total, q, data))
 	return nil
@@ -106,9 +111,14 @@ func (s *Server) getLinksAdmin(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	now := s.o.Now()
+	ids := make([]int64, len(links))
+	for i := range links {
+		ids[i] = links[i].ID
+	}
+	rts := s.routingFor(ctx, ids)
 	data := make([]obj, 0, len(links))
 	for i := range links {
-		data = append(data, s.linkAdminJSON(&links[i], now))
+		data = append(data, withRouting(s.linkAdminJSON(&links[i], now), rts[links[i].ID]))
 	}
 	writeJSON(w, http.StatusOK, page(total, q, data))
 	return nil
@@ -212,6 +222,14 @@ func (s *Server) createLink(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
+	routing, routingSet, err := s.inlineRouting(ctx, p, b)
+	if err != nil {
+		return err
+	}
+	if !routingSet {
+		routing = s.defaultRouting(ctx, p)
+	}
+
 	target := b.str("target")
 	var domainID *int64
 	if fetched != nil {
@@ -225,7 +243,7 @@ func (s *Server) createLink(w http.ResponseWriter, r *http.Request) error {
 		if l, err := s.findLinkByTarget(ctx, f, target); err != nil {
 			return err
 		} else if l != nil {
-			writeJSON(w, http.StatusOK, s.linkJSON(l, true))
+			writeJSON(w, http.StatusOK, withRouting(s.linkJSON(l, true), s.routingOf(ctx, l.ID)))
 			return nil
 		}
 	}
@@ -282,9 +300,15 @@ func (s *Server) createLink(w http.ResponseWriter, r *http.Request) error {
 	} else {
 		l.DomainAddress = nil
 	}
+	if routing != nil {
+		if err := s.st.Routing().Put(ctx, l.ID, *routing); err != nil {
+			s.log.Error("routing on create", "link", l.ID, "err", err)
+			routing = nil
+		}
+	}
 	// A negative-cache entry may exist for this address.
 	s.invalidateLink(ctx, l.Address, domainID)
-	writeJSON(w, http.StatusCreated, s.linkCreatedJSON(l))
+	writeJSON(w, http.StatusCreated, withRouting(s.linkCreatedJSON(l), routing))
 	return nil
 }
 
@@ -430,8 +454,19 @@ func (s *Server) edit(w http.ResponseWriter, r *http.Request, adminRoute bool) e
 			up.Password, changed = &pw, true
 		}
 	}
-	if !changed {
+	routing, routingSet, err := s.inlineRouting(ctx, p, b)
+	if err != nil {
+		return err
+	}
+	if !changed && !routingSet {
 		return kuttErr("Should at least update one field.")
+	}
+	if !changed { // routing-only edit
+		if err := s.applyRouting(ctx, link, routing); err != nil {
+			return err
+		}
+		writeJSON(w, http.StatusOK, withRouting(s.linkJSON(link, true), routing))
+		return nil
 	}
 	if up.Address != nil {
 		taken, err := s.st.Links().AddressTaken(ctx, *up.Address, link.DomainID)
@@ -466,7 +501,14 @@ func (s *Server) edit(w http.ResponseWriter, r *http.Request, adminRoute bool) e
 	if len(updated) == 0 {
 		return kuttErr("Link was not found.")
 	}
-	writeJSON(w, http.StatusOK, s.linkJSON(&updated[0], true))
+	if routingSet {
+		if err := s.applyRouting(ctx, &updated[0], routing); err != nil {
+			return err
+		}
+	} else {
+		routing = s.routingOf(ctx, updated[0].ID)
+	}
+	writeJSON(w, http.StatusOK, withRouting(s.linkJSON(&updated[0], true), routing))
 	return nil
 }
 
@@ -617,7 +659,7 @@ func (s *Server) linkStats(w http.ResponseWriter, r *http.Request) error {
 		s.stats.put(ctx, link.ID, statsBody)
 	}
 	// {...stats, ...sanitize.link(link)}: splice the two objects.
-	lb, err := marshal(s.linkJSON(link, true))
+	lb, err := marshal(withRouting(s.linkJSON(link, true), s.routingOf(ctx, link.ID)))
 	if err != nil {
 		return err
 	}

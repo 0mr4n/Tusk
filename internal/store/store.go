@@ -275,6 +275,71 @@ type NameValue struct {
 	Value int64  `json:"value"`
 }
 
+// ---------- Platform routing (Tusk-only, tusk_* tables; docs/UNIVERSAL-LINKS.md) ----------
+
+// RouteDelta is a pre-aggregated increment of tusk_route_visits for one (link, hour).
+type RouteDelta struct {
+	LinkID int64
+	UserID *int64
+	Hour   time.Time // UTC, truncated to the hour
+	Total  int64
+	Routes map[string]int64 // ios android desktop fallback
+	OS     map[string]int64 // ios ipados android windows macos linux chromeos other
+	Device map[string]int64 // mobile tablet desktop other
+}
+
+// RouteStats mirrors the Kutt stats envelope (lastDay/lastWeek/lastMonth/lastYear).
+type RouteStats struct {
+	LastDay   RoutePeriod `json:"lastDay"`
+	LastWeek  RoutePeriod `json:"lastWeek"`
+	LastMonth RoutePeriod `json:"lastMonth"`
+	LastYear  RoutePeriod `json:"lastYear"`
+	UpdatedAt time.Time   `json:"updatedAt"`
+}
+
+type RoutePeriod struct {
+	Stats RouteBuckets `json:"stats"`
+	Views []int64      `json:"views"`
+	Total int64        `json:"total"`
+}
+
+type RouteBuckets struct {
+	Route  []NameValue `json:"route"`
+	OS     []NameValue `json:"os"`
+	Device []NameValue `json:"device"`
+}
+
+type RoutingStore interface {
+	// Get returns a link's routing (enabled or not). ErrNotFound when it has none.
+	Get(ctx context.Context, linkID int64) (*domain.Routing, error)
+	// GetMany returns routing for the links that have it (list endpoints).
+	GetMany(ctx context.Context, linkIDs []int64) (map[int64]*domain.Routing, error)
+	// Put creates or replaces a link's routing.
+	Put(ctx context.Context, linkID int64, r domain.Routing) error
+	// Delete removes a link's routing. Returns false if it had none.
+	Delete(ctx context.Context, linkID int64) (bool, error)
+	// DisableModes turns routing off on the user's links whose mode is not in allowed
+	// (admin revoked a mode). Returns the links whose cache entries must be invalidated.
+	DisableModes(ctx context.Context, userID int64, allowed []domain.RoutingMode) ([]LinkKey, error)
+
+	// GetUser returns the user's controls; a zero value (UserID set) when there is no row.
+	GetUser(ctx context.Context, userID int64) (*domain.UserRouting, error)
+	PutUser(ctx context.Context, u domain.UserRouting) error
+
+	// GetDomainApps: domainID 0 = default domain. ErrNotFound when not configured.
+	GetDomainApps(ctx context.Context, domainID int64) (*domain.DomainApps, error)
+	PutDomainApps(ctx context.Context, a domain.DomainApps) error
+	DeleteDomainApps(ctx context.Context, domainID int64) (bool, error)
+
+	// ApplyRouteDeltas upserts tusk_route_visits with atomic increments; deltas for
+	// links that no longer exist are dropped. Safe on N worker replicas.
+	ApplyRouteDeltas(ctx context.Context, deltas []RouteDelta) error
+	RouteStats(ctx context.Context, linkID int64, now time.Time) (*RouteStats, error)
+	// SweepOrphans deletes tusk_* rows whose link/user/domain is gone (e.g. deleted
+	// by Node Kutt, which doesn't know these tables).
+	SweepOrphans(ctx context.Context) (int64, error)
+}
+
 // ---------- Aggregate ----------
 
 // Store bundles all repositories plus lifecycle.
@@ -284,6 +349,7 @@ type Store interface {
 	Domains() DomainStore
 	Hosts() HostStore
 	Visits() VisitStore
+	Routing() RoutingStore
 	// Migrate verifies/creates schema. On an existing Kutt DB it checks knex_migrations
 	// contains 20250106070444_remove_cooldown.js and refuses otherwise; on an empty DB it
 	// creates the final Kutt schema AND a knex_migrations table so Node Kutt can still run on it.

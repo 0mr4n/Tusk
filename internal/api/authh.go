@@ -423,6 +423,8 @@ func (s *Server) publicConfig(w http.ResponseWriter, r *http.Request) error {
 		{"server_cname_address", c.ServerCNAMEAddress},
 		{"custom_domain_use_https", c.CustomDomainUseHTTPS},
 		{"needs_admin_setup", !any},
+		{"routing_enabled", c.RoutingEnabled},
+		{"routing_smart_timeout_ms", c.RoutingSmartTimeout.Milliseconds()},
 	})
 	return nil
 }

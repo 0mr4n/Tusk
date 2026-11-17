@@ -30,7 +30,12 @@ type Worker struct {
 
 	Applied, Skipped, Failed atomic.Uint64
 	Swept                    atomic.Uint64
+	// Platform-routing stats (tusk_route_visits).
+	RoutesApplied, RoutesFailed atomic.Uint64
 }
+
+// orphanSweep is how often tusk_* rows left behind by Node Kutt deletions are removed.
+const orphanSweep = time.Hour
 
 // New builds a worker. linkResolver may be nil (no cache invalidation on sweep).
 func New(st store.Store, consumer domain.VisitConsumer, linkResolver Invalidator, cfg *config.Config) *Worker {
@@ -92,9 +97,85 @@ func (w *Worker) Handle(ctx context.Context, batch []domain.VisitEvent) error {
 		w.Failed.Add(uint64(n))
 		slog.Error("worker: dropping visit deltas after retries", "deltas", len(pending), "visits", n, "err", err)
 	}
+	w.applyRoutes(ctx, FoldRoutes(batch))
 	// Never return an error for partially-applied batches: re-delivery would double count.
 	return nil
 }
+
+// applyRoutes writes platform-routing deltas with the same bounded retry as
+// visits. Failures are counted and dropped, never retried by the transport.
+func (w *Worker) applyRoutes(ctx context.Context, deltas []store.RouteDelta) {
+	pending := deltas
+	var err error
+	for attempt := 0; attempt < 3 && len(pending) > 0; attempt++ {
+		var failed []store.RouteDelta
+		for i := range pending {
+			if e := w.st.Routing().ApplyRouteDeltas(ctx, pending[i:i+1]); e != nil {
+				failed = append(failed, pending[i])
+				err = e
+			} else {
+				w.RoutesApplied.Add(uint64(pending[i].Total))
+			}
+		}
+		pending = failed
+		if len(pending) > 0 && ctx.Err() == nil {
+			time.Sleep(time.Duration(attempt+1) * 250 * time.Millisecond)
+		}
+	}
+	if len(pending) > 0 {
+		var n int64
+		for _, d := range pending {
+			n += d.Total
+		}
+		w.RoutesFailed.Add(uint64(n))
+		slog.Error("worker: dropping route deltas after retries", "deltas", len(pending), "visits", n, "err", err)
+	}
+}
+
+// FoldRoutes aggregates the platform-routing part of V2 events (Route set) into
+// per-(link, hour) deltas for tusk_route_visits. Same owner rule as Fold.
+func FoldRoutes(batch []domain.VisitEvent) []store.RouteDelta {
+	var idx map[foldKey]int
+	var out []store.RouteDelta
+	for i := range batch {
+		ev := &batch[i]
+		if ev.Route == "" || ev.LinkID == 0 || ev.UserID == nil {
+			continue
+		}
+		ts := ev.Timestamp
+		if ts.IsZero() {
+			ts = time.Now()
+		}
+		hour := ts.UTC().Truncate(time.Hour)
+		k := foldKey{ev.LinkID, hour.Unix()}
+		if idx == nil {
+			idx = make(map[foldKey]int, 8)
+		}
+		j, ok := idx[k]
+		if !ok {
+			j = len(out)
+			idx[k] = j
+			uid := *ev.UserID
+			out = append(out, store.RouteDelta{
+				LinkID: ev.LinkID, UserID: &uid, Hour: hour,
+				Routes: make(map[string]int64, 2), OS: make(map[string]int64, 2), Device: make(map[string]int64, 2),
+			})
+		}
+		d := &out[j]
+		d.Total++
+		d.Routes[bucketOr(ev.Route, routeKeys, "fallback")]++
+		d.OS[bucket(ev.PlatformOS, routeOSKeys)]++
+		d.Device[bucket(ev.Device, routeDevKeys)]++
+	}
+	return out
+}
+
+// Route-stats buckets; anything unknown counts as "other" (routes: "fallback").
+var (
+	routeKeys    = []string{"ios", "android", "desktop", "fallback"}
+	routeOSKeys  = []string{"ios", "ipados", "android", "windows", "macos", "linux", "chromeos", "other"}
+	routeDevKeys = []string{"mobile", "tablet", "desktop", "other"}
+)
 
 type foldKey struct {
 	linkID int64
@@ -163,13 +244,15 @@ var (
 	oses     = []string{"android", "ios", "linux", "macos", "other", "windows"}
 )
 
-func bucket(v string, set []string) string {
+func bucket(v string, set []string) string { return bucketOr(v, set, "other") }
+
+func bucketOr(v string, set []string, def string) string {
 	for _, s := range set {
 		if strings.EqualFold(v, s) {
 			return s
 		}
 	}
-	return "other"
+	return def
 }
 
 // CountryKey: (country || "Unknown").toLowerCase().
@@ -203,12 +286,20 @@ func lower(s string) string {
 func (w *Worker) sweepLoop(ctx context.Context) {
 	t := time.NewTicker(w.sweep)
 	defer t.Stop()
+	o := time.NewTicker(orphanSweep)
+	defer o.Stop()
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case <-t.C:
 			w.SweepOnce(ctx)
+		case <-o.C:
+			if n, err := w.st.Routing().SweepOrphans(ctx); err != nil && ctx.Err() == nil {
+				slog.Warn("worker: routing orphan sweep failed", "err", err)
+			} else if n > 0 {
+				slog.Info("worker: removed orphaned routing rows", "rows", n)
+			}
 		}
 	}
 }
