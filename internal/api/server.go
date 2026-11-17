@@ -21,11 +21,11 @@ import (
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 
-	"github.com/Hulul-Group/Tusk/internal/auth"
-	"github.com/Hulul-Group/Tusk/internal/config"
-	"github.com/Hulul-Group/Tusk/internal/domain"
-	"github.com/Hulul-Group/Tusk/internal/httpx"
-	"github.com/Hulul-Group/Tusk/internal/store"
+	"github.com/0mr4n/Tusk/internal/auth"
+	"github.com/0mr4n/Tusk/internal/config"
+	"github.com/0mr4n/Tusk/internal/domain"
+	"github.com/0mr4n/Tusk/internal/httpx"
+	"github.com/0mr4n/Tusk/internal/store"
 )
 
 // Mailer is implemented by internal/mail. Every method is a no-op error when

@@ -44,7 +44,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 FROM gcr.io/distroless/static-debian12:nonroot
 LABEL org.opencontainers.image.title="Tusk" \
       org.opencontainers.image.description="High-traffic Go port of the Kutt URL shortener" \
-      org.opencontainers.image.source="https://github.com/Hulul-Group/Tusk" \
+      org.opencontainers.image.source="https://github.com/0mr4n/Tusk" \
       org.opencontainers.image.licenses="MIT"
 WORKDIR /kutt
 COPY --from=go /out/tusk /out/redirector /out/api /out/worker /usr/local/bin/

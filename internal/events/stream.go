@@ -15,7 +15,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 
-	"github.com/Hulul-Group/Tusk/internal/domain"
+	"github.com/0mr4n/Tusk/internal/domain"
 )
 
 const (

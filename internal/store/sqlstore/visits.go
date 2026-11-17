@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Hulul-Group/Tusk/internal/store"
+	"github.com/0mr4n/Tusk/internal/store"
 )
 
 type visitStore struct{ s *DB }

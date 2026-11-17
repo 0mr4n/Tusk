@@ -3,7 +3,7 @@ package uaparse
 import (
 	"testing"
 
-	"github.com/Hulul-Group/Tusk/internal/domain"
+	"github.com/0mr4n/Tusk/internal/domain"
 )
 
 func TestPlatform(t *testing.T) {

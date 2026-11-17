@@ -22,8 +22,8 @@ import (
 
 	"github.com/oschwald/geoip2-golang/v2"
 
-	"github.com/Hulul-Group/Tusk/internal/config"
-	"github.com/Hulul-Group/Tusk/internal/domain"
+	"github.com/0mr4n/Tusk/internal/config"
+	"github.com/0mr4n/Tusk/internal/domain"
 )
 
 // New builds the resolver for cfg.GeoProvider.

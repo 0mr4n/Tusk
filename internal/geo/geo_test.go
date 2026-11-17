@@ -7,7 +7,7 @@ import (
 	"net/netip"
 	"testing"
 
-	"github.com/Hulul-Group/Tusk/internal/config"
+	"github.com/0mr4n/Tusk/internal/config"
 )
 
 func cfg(mod func(*config.Config)) *config.Config {

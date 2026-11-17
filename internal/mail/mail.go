@@ -17,7 +17,7 @@ import (
 
 	gomail "github.com/wneessen/go-mail"
 
-	"github.com/Hulul-Group/Tusk/internal/config"
+	"github.com/0mr4n/Tusk/internal/config"
 )
 
 //go:embed templates/*.html

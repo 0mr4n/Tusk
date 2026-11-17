@@ -20,8 +20,8 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 	_ "modernc.org/sqlite"
 
-	"github.com/Hulul-Group/Tusk/internal/config"
-	"github.com/Hulul-Group/Tusk/internal/store"
+	"github.com/0mr4n/Tusk/internal/config"
+	"github.com/0mr4n/Tusk/internal/store"
 )
 
 type dialect int

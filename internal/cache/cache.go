@@ -17,9 +17,9 @@ import (
 	"github.com/redis/go-redis/v9"
 	"golang.org/x/sync/singleflight"
 
-	"github.com/Hulul-Group/Tusk/internal/config"
-	"github.com/Hulul-Group/Tusk/internal/domain"
-	"github.com/Hulul-Group/Tusk/internal/store"
+	"github.com/0mr4n/Tusk/internal/config"
+	"github.com/0mr4n/Tusk/internal/domain"
+	"github.com/0mr4n/Tusk/internal/store"
 )
 
 const (

@@ -1,4 +1,4 @@
-module github.com/Hulul-Group/Tusk
+module github.com/0mr4n/Tusk
 
 go 1.27.1
 

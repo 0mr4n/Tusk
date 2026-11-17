@@ -17,10 +17,10 @@ import (
 
 	"golang.org/x/crypto/bcrypt"
 
-	"github.com/Hulul-Group/Tusk/internal/api/apitest"
-	"github.com/Hulul-Group/Tusk/internal/auth"
-	"github.com/Hulul-Group/Tusk/internal/config"
-	"github.com/Hulul-Group/Tusk/internal/domain"
+	"github.com/0mr4n/Tusk/internal/api/apitest"
+	"github.com/0mr4n/Tusk/internal/auth"
+	"github.com/0mr4n/Tusk/internal/config"
+	"github.com/0mr4n/Tusk/internal/domain"
 )
 
 var update = flag.Bool("update", false, "rewrite testdata/*.golden")

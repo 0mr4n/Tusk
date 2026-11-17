@@ -16,19 +16,19 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 
-	"github.com/Hulul-Group/Tusk/internal/api"
-	"github.com/Hulul-Group/Tusk/internal/auth"
-	"github.com/Hulul-Group/Tusk/internal/cache"
-	"github.com/Hulul-Group/Tusk/internal/config"
-	"github.com/Hulul-Group/Tusk/internal/events"
-	"github.com/Hulul-Group/Tusk/internal/geo"
-	"github.com/Hulul-Group/Tusk/internal/httpx"
-	"github.com/Hulul-Group/Tusk/internal/mail"
-	"github.com/Hulul-Group/Tusk/internal/redirect"
-	"github.com/Hulul-Group/Tusk/internal/store/sqlstore"
-	"github.com/Hulul-Group/Tusk/internal/uaparse"
-	"github.com/Hulul-Group/Tusk/internal/webui"
-	"github.com/Hulul-Group/Tusk/internal/worker"
+	"github.com/0mr4n/Tusk/internal/api"
+	"github.com/0mr4n/Tusk/internal/auth"
+	"github.com/0mr4n/Tusk/internal/cache"
+	"github.com/0mr4n/Tusk/internal/config"
+	"github.com/0mr4n/Tusk/internal/events"
+	"github.com/0mr4n/Tusk/internal/geo"
+	"github.com/0mr4n/Tusk/internal/httpx"
+	"github.com/0mr4n/Tusk/internal/mail"
+	"github.com/0mr4n/Tusk/internal/redirect"
+	"github.com/0mr4n/Tusk/internal/store/sqlstore"
+	"github.com/0mr4n/Tusk/internal/uaparse"
+	"github.com/0mr4n/Tusk/internal/webui"
+	"github.com/0mr4n/Tusk/internal/worker"
 )
 
 // Drain is the graceful-shutdown budget (HTTP drain + visit publisher flush).

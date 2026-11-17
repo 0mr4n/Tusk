@@ -14,8 +14,8 @@ import (
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 
-	"github.com/Hulul-Group/Tusk/internal/domain"
-	"github.com/Hulul-Group/Tusk/internal/store"
+	"github.com/0mr4n/Tusk/internal/domain"
+	"github.com/0mr4n/Tusk/internal/store"
 )
 
 // Store is a mutex-guarded in-memory store.

@@ -9,7 +9,7 @@ import (
 
 	"github.com/redis/go-redis/v9"
 
-	"github.com/Hulul-Group/Tusk/internal/store"
+	"github.com/0mr4n/Tusk/internal/store"
 )
 
 // ---------- rate limiting (helpers.handler.js:88-124) ----------

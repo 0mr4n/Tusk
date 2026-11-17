@@ -38,7 +38,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Hulul-Group/Tusk/internal/config"
+	"github.com/0mr4n/Tusk/internal/config"
 )
 
 //go:embed all:dist

@@ -17,8 +17,8 @@ import (
 	"github.com/coreos/go-oidc/v3/oidc"
 	"golang.org/x/oauth2"
 
-	"github.com/Hulul-Group/Tusk/internal/domain"
-	"github.com/Hulul-Group/Tusk/internal/store"
+	"github.com/0mr4n/Tusk/internal/domain"
+	"github.com/0mr4n/Tusk/internal/store"
 )
 
 // OIDCConfig mirrors the OIDC_* env vars.

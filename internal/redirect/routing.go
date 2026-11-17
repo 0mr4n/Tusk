@@ -13,8 +13,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Hulul-Group/Tusk/internal/domain"
-	"github.com/Hulul-Group/Tusk/internal/uaparse"
+	"github.com/0mr4n/Tusk/internal/domain"
+	"github.com/0mr4n/Tusk/internal/uaparse"
 )
 
 // Platform routing ("universal links", docs/UNIVERSAL-LINKS.md §1, §4, §6).

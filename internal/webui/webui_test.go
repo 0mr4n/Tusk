@@ -12,7 +12,7 @@ import (
 	"testing"
 	"testing/fstest"
 
-	"github.com/Hulul-Group/Tusk/internal/config"
+	"github.com/0mr4n/Tusk/internal/config"
 )
 
 const testIndex = `<!doctype html><html><head><title>Kutt</title><!--tusk:custom-css--></head><body><div id="root"></div></body></html>`

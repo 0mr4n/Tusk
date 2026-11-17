@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/Hulul-Group/Tusk/internal/domain"
-	"github.com/Hulul-Group/Tusk/internal/store"
+	"github.com/0mr4n/Tusk/internal/domain"
+	"github.com/0mr4n/Tusk/internal/store"
 )
 
 // CookieName is the JWT cookie (passport.js:12, utils.js:51).

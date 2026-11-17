@@ -12,7 +12,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/Hulul-Group/Tusk/internal/config"
+	"github.com/0mr4n/Tusk/internal/config"
 )
 
 // Cloudflare's published ranges, fetched from https://www.cloudflare.com/ips-v4 and

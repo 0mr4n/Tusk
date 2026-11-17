@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Hulul-Group/Tusk/internal/config"
-	"github.com/Hulul-Group/Tusk/internal/domain"
+	"github.com/0mr4n/Tusk/internal/config"
+	"github.com/0mr4n/Tusk/internal/domain"
 )
 
 func sampleRoutingBody() map[string]any {

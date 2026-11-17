@@ -8,11 +8,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Hulul-Group/Tusk/internal/config"
-	"github.com/Hulul-Group/Tusk/internal/domain"
-	"github.com/Hulul-Group/Tusk/internal/events"
-	"github.com/Hulul-Group/Tusk/internal/store"
-	"github.com/Hulul-Group/Tusk/internal/store/sqlstore"
+	"github.com/0mr4n/Tusk/internal/config"
+	"github.com/0mr4n/Tusk/internal/domain"
+	"github.com/0mr4n/Tusk/internal/events"
+	"github.com/0mr4n/Tusk/internal/store"
+	"github.com/0mr4n/Tusk/internal/store/sqlstore"
 )
 
 func uid(v int64) *int64 { return &v }

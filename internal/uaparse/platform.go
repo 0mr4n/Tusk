@@ -1,6 +1,6 @@
 package uaparse
 
-import "github.com/Hulul-Group/Tusk/internal/domain"
+import "github.com/0mr4n/Tusk/internal/domain"
 
 // PlatformInfo is the platform-routing classification of a User-Agent
 // (docs/UNIVERSAL-LINKS.md §4). It is independent of Kutt's Browser/OS buckets,

@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Hulul-Group/Tusk/internal/domain"
-	"github.com/Hulul-Group/Tusk/internal/store"
+	"github.com/0mr4n/Tusk/internal/domain"
+	"github.com/0mr4n/Tusk/internal/store"
 )
 
 func sampleRouting() domain.Routing {

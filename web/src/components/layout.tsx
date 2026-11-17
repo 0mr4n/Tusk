@@ -95,7 +95,7 @@ function Header() {
         <nav aria-label="Secondary" className="ml-4 hidden items-center gap-1 text-sm text-muted-foreground sm:flex">
           <a
             className="rounded-md px-2 py-1 hover:text-foreground"
-            href="https://github.com/Hulul-Group/Tusk"
+            href="https://github.com/0mr4n/Tusk"
             target="_blank"
             rel="noopener noreferrer"
           >
@@ -156,7 +156,7 @@ function Footer() {
       <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-center gap-x-3 gap-y-1 px-4 py-6 text-center text-sm text-muted-foreground">
         <span>
           Powered by{" "}
-          <a className="underline-offset-4 hover:underline" href="https://github.com/Hulul-Group/Tusk" target="_blank" rel="noopener noreferrer">
+          <a className="underline-offset-4 hover:underline" href="https://github.com/0mr4n/Tusk" target="_blank" rel="noopener noreferrer">
             Tusk
           </a>
         </span>

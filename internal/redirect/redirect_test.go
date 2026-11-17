@@ -11,9 +11,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Hulul-Group/Tusk/internal/domain"
-	"github.com/Hulul-Group/Tusk/internal/httpx"
-	"github.com/Hulul-Group/Tusk/internal/store"
+	"github.com/0mr4n/Tusk/internal/domain"
+	"github.com/0mr4n/Tusk/internal/httpx"
+	"github.com/0mr4n/Tusk/internal/store"
 	"golang.org/x/crypto/bcrypt"
 )
 

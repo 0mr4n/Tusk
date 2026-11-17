@@ -14,8 +14,8 @@ import (
 
 	"github.com/redis/go-redis/v9"
 
-	"github.com/Hulul-Group/Tusk/internal/config"
-	"github.com/Hulul-Group/Tusk/internal/domain"
+	"github.com/0mr4n/Tusk/internal/config"
+	"github.com/0mr4n/Tusk/internal/domain"
 )
 
 // New picks the transport: Redis Streams when rdb != nil and (split mode or REDIS_ENABLED),

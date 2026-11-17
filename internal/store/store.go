@@ -13,7 +13,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/Hulul-Group/Tusk/internal/domain"
+	"github.com/0mr4n/Tusk/internal/domain"
 )
 
 // Page is Kutt's skip/limit pagination (req.context.limit/skip, limit default 10, max 50).
