@@ -89,7 +89,7 @@ function Header() {
     <header className="sticky top-0 z-40 border-b bg-background/80 backdrop-blur supports-backdrop-filter:bg-background/60">
       <div className="mx-auto flex h-14 w-full max-w-6xl items-center gap-2 px-4">
         <Link to="/" className="flex items-center gap-2 font-semibold" aria-label={`${cfg?.site_name} homepage`}>
-          <img src="/images/logo.png" alt="" width={18} height={24} className="dark:invert" />
+          <img src="/images/logo.png" alt="" width={24} height={24} />
           <span>{cfg?.site_name}</span>
         </Link>
         <nav aria-label="Secondary" className="ml-4 hidden items-center gap-1 text-sm text-muted-foreground sm:flex">

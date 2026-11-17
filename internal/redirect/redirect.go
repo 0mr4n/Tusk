@@ -79,7 +79,7 @@ func New(o Options) *Handler {
 		o.ParseUA = func(string) (string, string) { return "other", "other" }
 	}
 	if o.SiteName == "" {
-		o.SiteName = "Kutt"
+		o.SiteName = "Tusk"
 	}
 	if o.SmartTimeout <= 0 {
 		o.SmartTimeout = 1500 * time.Millisecond

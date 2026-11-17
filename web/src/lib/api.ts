@@ -446,7 +446,7 @@ export const qk = {
 }
 
 const FALLBACK_CONFIG: PublicConfig = {
-  site_name: "Kutt",
+  site_name: "Tusk",
   default_domain: typeof window !== "undefined" ? window.location.host : "localhost:3000",
   disallow_registration: true,
   disallow_anonymous_links: true,

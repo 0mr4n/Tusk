@@ -115,7 +115,7 @@ func Handler(cfg *config.Config) http.Handler {
 
 func newHandler(dist fs.FS, cfg *config.Config) *handler {
 	h := &handler{files: map[string]*file{}, modTime: time.Now()}
-	siteName := "Kutt"
+	siteName := "Tusk"
 	if cfg != nil {
 		h.customDir = cfg.StaticDir
 		if cfg.SiteName != "" {

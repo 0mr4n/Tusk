@@ -86,7 +86,7 @@ export function ReportPage() {
 
 export function TermsPage() {
   const { data: cfg } = useConfig()
-  const site = cfg?.site_name ?? "Kutt"
+  const site = cfg?.site_name ?? "Tusk"
   const domain = cfg?.default_domain ?? ""
   return (
     <article className="mx-auto grid max-w-3xl gap-4 leading-7 text-muted-foreground">

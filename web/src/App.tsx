@@ -37,7 +37,7 @@ function DocumentTitle() {
   const { pathname } = useLocation()
   const { data: cfg } = useConfig()
   useEffect(() => {
-    const site = cfg?.site_name ?? "Kutt"
+    const site = cfg?.site_name ?? "Tusk"
     const key = Object.keys(TITLES).find((k) => pathname === k || pathname.startsWith(k + "/"))
     document.title = key ? `${TITLES[key]} | ${site}` : `${site} | Modern Open Source URL shortener.`
   }, [pathname, cfg?.site_name])

@@ -34,7 +34,7 @@ const (
 // Config is the full runtime configuration. Field comments give the env var.
 type Config struct {
 	Port          int    // PORT (3000)
-	SiteName      string // SITE_NAME (Kutt)
+	SiteName      string // SITE_NAME (Kutt default was "Kutt")
 	DefaultDomain string // DEFAULT_DOMAIN (localhost:3000)
 	LinkLength    int    // LINK_LENGTH (6)
 	LinkAlphabet  string // LINK_CUSTOM_ALPHABET
@@ -136,7 +136,7 @@ func LoadFrom(lookup func(string) (string, bool)) (*Config, error) {
 	c.Production = e.str("NODE_ENV", "") == "production" || e.str("TUSK_ENV", "") == "production"
 
 	c.Port = e.int("PORT", 3000)
-	c.SiteName = e.str("SITE_NAME", "Kutt")
+	c.SiteName = e.str("SITE_NAME", "Tusk")
 	c.DefaultDomain = e.str("DEFAULT_DOMAIN", "localhost:3000")
 	c.LinkLength = e.int("LINK_LENGTH", 6)
 	c.LinkAlphabet = e.str("LINK_CUSTOM_ALPHABET", "abcdefghkmnpqrstuvwxyzABCDEFGHKLMNPQRSTUVWXYZ23456789")

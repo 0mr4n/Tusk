@@ -78,7 +78,7 @@ which reads the value from a file (Docker secrets).
 |---|---|---|
 | `JWT_SECRET` | Signs auth tokens. **Keep the same value as your Kutt install** so sessions survive. Required in production. | dev: `securekey` |
 | `PORT` | HTTP port (all-in-one and `api`) | `3000` |
-| `SITE_NAME` | Site name shown in the UI and page titles | `Kutt` |
+| `SITE_NAME` | Site name shown in the UI and page titles | `Tusk` (Kutt defaulted to `Kutt`) |
 | `DEFAULT_DOMAIN` | Domain the app runs on | `localhost:3000` |
 | `LINK_LENGTH` | Length of generated addresses | `6` |
 | `LINK_CUSTOM_ALPHABET` | Alphabet for generated addresses | `abcdefghkmnpqrstuvwxyzABCDEFGHKLMNPQRSTUVWXYZ23456789` |
